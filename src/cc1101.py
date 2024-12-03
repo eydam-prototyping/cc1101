@@ -5,7 +5,7 @@ import RPi.GPIO as GPIO
 import time
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 class Received_Packet:
     def __init__(self, payload:bytes, length:int, rssi:int, lqi:int=None, crc_ok:bool=None):
@@ -32,23 +32,27 @@ class Cc1101:
         if version not in [0x04, 0x14]:
             logger.warning(f"Unexpected chip version: 0x{version:02X}")
 
-        logger.debug(f"Chip partnum: 0x{partnum:02X}, version: 0x{version:02X}")
-
         self.configurator = Cc1101Configurator()
         self.get_configuration()
-        logger.debug(f"Configuration: {self.configurator}")
     
     def reset(self):
         logger.debug("Resetting CC1101 device")
         self.driver.command_strobe(addresses.SRES)
 
     def get_chip_partnum(self):
-        return self.driver.read_status_register(addresses.PARTNUM)
+        logger.debug("Reading chip partnum")
+        partnum = self.driver.read_status_register(addresses.PARTNUM)
+        logger.debug(f"Chip partnum: 0x{partnum:02X}")
+        return partnum
     
     def get_chip_version(self):
-        return self.driver.read_status_register(addresses.VERSION)
+        logger.debug("Reading chip version")
+        version = self.driver.read_status_register(addresses.VERSION)
+        logger.debug(f"Chip version: 0x{version:02X}")
+        return version
     
     def get_configuration(self):
+        logger.debug("Reading configuration from device")
         registers = self.driver.read_burst(addresses.IOCFG2, 47)
         patable = self.driver.read_burst(addresses.PATABLE, 8)
         self.configurator._registers = registers
@@ -56,10 +60,12 @@ class Cc1101:
         return registers, patable
     
     def set_configuration(self):
+        logger.debug("Writing configuration to device")
         self.driver.write_burst(addresses.IOCFG2, self.configurator._registers)
         self.driver.write_burst(addresses.PATABLE, self.configurator._patable)
 
     def load_preset(self, preset):
+        logger.debug(f"Loading preset {preset['name']}")
         self.configurator._registers = preset["registers"]
         self.configurator._patable = preset["patable"]
         self.set_configuration()

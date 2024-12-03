@@ -1,6 +1,6 @@
 import addresses as addr
 import options as opt
-from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, rf_setting_dr5k_dev5k2_2fsk_rxbw58k_kia
+from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, rf_setting_dr5k7_dev5k2_2fsk_rxbw58k_kia
 import math
 
 class Cc1101Configurator:
