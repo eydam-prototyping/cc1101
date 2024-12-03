@@ -2,12 +2,12 @@ import addresses as addr
 import options as opt
 from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, rf_setting_dr5k_dev5k2_2fsk_rxbw58k_kia
 import math
-import binascii
 
 class Cc1101Configurator:
     _preamble_lengths = [2, 3, 4, 6, 8, 12, 16, 24]
-    def __init__(self, preset=rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, fosc=26e6):
+    def __init__(self, preset=rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, patable=[0x8E,   0,   0,   0,   0,   0,   0,   0], fosc=26e6):
         self._registers = preset
+        self._patable = patable
         self._fosc = fosc
 
 
@@ -439,6 +439,23 @@ class Cc1101Configurator:
         """
         freq = round(freq_hz*2**16/self._fosc).to_bytes(3, 'big')
         self._registers[addr.FREQ2:addr.FREQ0+1] = [freq[0], freq[1], freq[2]]
+
+    def get_patable(self):
+        """see 10.6 PATABLE Access
+
+        Returns:
+            [int]: PATABLE values
+        """
+        return self._patable
+    
+    def set_patable(self, patable):
+        """see 10.6 PATABLE Access
+
+        Args:
+            patable ([int]): PATABLE values
+        """
+        self._patable = patable
+    
 
     def print_description(self):
         print(f"12   Data rate: {self.get_data_rate_baud()/1e3:.3f} kbps")

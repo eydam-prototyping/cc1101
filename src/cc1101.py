@@ -50,11 +50,19 @@ class Cc1101:
     
     def get_configuration(self):
         registers = self.driver.read_burst(addresses.IOCFG2, 47)
+        patable = self.driver.read_burst(addresses.PATABLE, 8)
         self.configurator._registers = registers
-        return registers
+        self.configurator._patable = patable
+        return registers, patable
     
     def set_configuration(self):
         self.driver.write_burst(addresses.IOCFG2, self.configurator._registers)
+        self.driver.write_burst(addresses.PATABLE, self.configurator._patable)
+
+    def load_preset(self, preset):
+        self.configurator._registers = preset["registers"]
+        self.configurator._patable = preset["patable"]
+        self.set_configuration()
     
     def transmit(self, data:bytes, blocking=True):
         """Transmit the data.
