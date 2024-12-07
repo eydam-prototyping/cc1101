@@ -1,7 +1,11 @@
 import addresses as addr
 import options as opt
-from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, rf_setting_dr5k7_dev5k2_2fsk_rxbw58k_kia
+from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens
 import math
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class Cc1101Configurator:
     _preamble_lengths = [2, 3, 4, 6, 8, 12, 16, 24]
@@ -458,44 +462,38 @@ class Cc1101Configurator:
     
 
     def print_description(self):
-        print(f"12   Data rate: {self.get_data_rate_baud()/1e3:.3f} kbps")
+        logger.info(f"12   Data rate: {self.get_data_rate_baud()/1e3:.3f} kbps")
 
-        print(f"13   Receiver bandwidth: {self.get_receiver_bandwidth_hz()/1e3:.3f} kHz")
+        logger.info(f"13   Receiver bandwidth: {self.get_receiver_bandwidth_hz()/1e3:.3f} kHz")
  
         frequency_offset_compensation_setting = self.get_frequency_offset_compensation_setting()
-        print(f"14.1 Frequency offset compensation setting:")
-        print(f"     FOC_BS_CS_GATE: {frequency_offset_compensation_setting[0]} ({opt.FOC_BS_CS_GATE_OPTIONS[frequency_offset_compensation_setting[0]]})")
-        print(f"     FOC_PRE_K: {frequency_offset_compensation_setting[1]} ({opt.FOC_PRE_K_OPTIONS[frequency_offset_compensation_setting[1]]})")
-        print(f"     FOC_POST_K: {frequency_offset_compensation_setting[2]} ({opt.FOC_POST_K_OPTIONS[frequency_offset_compensation_setting[2]]})")
-        print(f"     FOC_LIMIT: {frequency_offset_compensation_setting[3]} ({opt.FOC_LIMIT[frequency_offset_compensation_setting[3]]})")
-        print(f"14.3 Byte synchronization mode: {self.get_sync_mode()} ({opt.BYTE_SYNCHRONIZATION_MODES[self.get_sync_mode()]})")
-        print(f"14.3 Synchronization word: 0x{self.get_sync_word()[0]:02X}{self.get_sync_word()[1]:02X}")
+        logger.info(f"14.1 Frequency offset compensation setting:")
+        logger.info(f"     FOC_BS_CS_GATE: {frequency_offset_compensation_setting[0]} ({opt.FOC_BS_CS_GATE_OPTIONS[frequency_offset_compensation_setting[0]]})")
+        logger.info(f"     FOC_PRE_K: {frequency_offset_compensation_setting[1]} ({opt.FOC_PRE_K_OPTIONS[frequency_offset_compensation_setting[1]]})")
+        logger.info(f"     FOC_POST_K: {frequency_offset_compensation_setting[2]} ({opt.FOC_POST_K_OPTIONS[frequency_offset_compensation_setting[2]]})")
+        logger.info(f"     FOC_LIMIT: {frequency_offset_compensation_setting[3]} ({opt.FOC_LIMIT[frequency_offset_compensation_setting[3]]})")
+        logger.info(f"14.3 Byte synchronization mode: {self.get_sync_mode()} ({opt.BYTE_SYNCHRONIZATION_MODES[self.get_sync_mode()]})")
+        logger.info(f"14.3 Synchronization word: 0x{self.get_sync_word()[0]:02X}{self.get_sync_word()[1]:02X}")
         
-        print(f"15.1 Data whitening: {self.get_data_whitening_enable()}")  
-        print(f"15.2 Preamble length: {self.get_preamble_length_bytes()} bytes")
-        print(f"     Packet length mode: {self.get_packet_length_mode()} ({opt.PAKET_LENGTH_OPTIONS[self.get_packet_length_mode()]})")
-        print(f"     Packet length: {self.get_packet_length()} bytes")
-        print(f"     CRC enabled: {self.get_crc_enable()}")
-        print(f"     Address check mode: {self.get_address_check_mode()} ({opt.ADDRESS_CHECK_OPTIONS[self.get_address_check_mode()]})")
-        print(f"     Address: {self.get_address()}")
-        print(f"15.3 CRC auto flush: {self.get_crc_auto_flush()}")
-        print(f"     Append status: {self.get_append_status_enabled()}")
-        print(f"15.4 FEC enabled: {self.get_fec_enable()}")
-        print(f"15.5 GDO0 configuration: 0x{self.get_GDOx_config(0):02X}")
-        print(f"     GDO1 configuration: 0x{self.get_GDOx_config(1):02X}")
-        print(f"     GDO2 configuration: 0x{self.get_GDOx_config(2):02X}")
-        print(f"     GDO0 inverted: {self.get_GDOx_inverted(0)}")
-        print(f"     GDO1 inverted: {self.get_GDOx_inverted(1)}")
-        print(f"     GDO2 inverted: {self.get_GDOx_inverted(2)}")
+        logger.info(f"15.1 Data whitening: {self.get_data_whitening_enable()}")  
+        logger.info(f"15.2 Preamble length: {self.get_preamble_length_bytes()} bytes")
+        logger.info(f"     Packet length mode: {self.get_packet_length_mode()} ({opt.PAKET_LENGTH_OPTIONS[self.get_packet_length_mode()]})")
+        logger.info(f"     Packet length: {self.get_packet_length()} bytes")
+        logger.info(f"     CRC enabled: {self.get_crc_enable()}")
+        logger.info(f"     Address check mode: {self.get_address_check_mode()} ({opt.ADDRESS_CHECK_OPTIONS[self.get_address_check_mode()]})")
+        logger.info(f"     Address: {self.get_address()}")
+        logger.info(f"15.3 CRC auto flush: {self.get_crc_auto_flush()}")
+        logger.info(f"     Append status: {self.get_append_status_enabled()}")
+        logger.info(f"15.4 FEC enabled: {self.get_fec_enable()}")
+        logger.info(f"15.5 GDO0 configuration: 0x{self.get_GDOx_config(0):02X}")
+        logger.info(f"     GDO1 configuration: 0x{self.get_GDOx_config(1):02X}")
+        logger.info(f"     GDO2 configuration: 0x{self.get_GDOx_config(2):02X}")
+        logger.info(f"     GDO0 inverted: {self.get_GDOx_inverted(0)}")
+        logger.info(f"     GDO1 inverted: {self.get_GDOx_inverted(1)}")
+        logger.info(f"     GDO2 inverted: {self.get_GDOx_inverted(2)}")
 
-        print(f"16   Modulation format: {self.get_modulation_format()} ({opt.MODULATION_FORMAT_OPTIONS[self.get_modulation_format()]})")
-        print(f"     Manchester encoding: {self.get_manchester_encoding_enable()}")
-        print(f"16.1 Frequency deviation: {self.get_deviation_hz()/1e3:.3f} kHz")
+        logger.info(f"16   Modulation format: {self.get_modulation_format()} ({opt.MODULATION_FORMAT_OPTIONS[self.get_modulation_format()]})")
+        logger.info(f"     Manchester encoding: {self.get_manchester_encoding_enable()}")
+        logger.info(f"16.1 Frequency deviation: {self.get_deviation_hz()/1e3:.3f} kHz")
 
-        print(f"21   Base frequency: {self.get_base_frequency_hz()/1e6:.3f} MHz")
-        
-
-
-if __name__=="__main__":
-    cc1101 = Cc1101Configurator(preset=rf_setting_dr5k_dev5k2_2fsk_rxbw58k_kia)
-    cc1101.print_description()
+        logger.info(f"21   Base frequency: {self.get_base_frequency_hz()/1e6:.3f} MHz")
