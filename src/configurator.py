@@ -385,7 +385,7 @@ class Cc1101Configurator:
         Args:
             format (int): Modulation format
         """
-        self._registers[addr.MDMCFG2] = (self._registers[addr.MDMCFG2] & 0xCF) | (format << 4)
+        self._registers[addr.MDMCFG2] = (self._registers[addr.MDMCFG2] & 0x8F) | (format << 4)
     
     def get_manchester_encoding_enable(self) -> bool:
         """see 16 Modulation Format
