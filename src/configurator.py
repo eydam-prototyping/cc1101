@@ -386,6 +386,11 @@ class Cc1101Configurator:
             format (int): Modulation format
         """
         self._registers[addr.MDMCFG2] = (self._registers[addr.MDMCFG2] & 0x8F) | (format << 4)
+        # set FREND0 register to 1 for ASK/OOK modulation
+        if format == 3:
+           self._registers[addr.FREND0] = (self._registers[addr.FREND0] & 0xF7) | 0x01
+        else:
+            self._registers[addr.FREND0] = (self._registers[addr.FREND0] & 0xF7)
     
     def get_manchester_encoding_enable(self) -> bool:
         """see 16 Modulation Format
