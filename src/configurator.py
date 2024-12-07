@@ -9,9 +9,10 @@ logger.setLevel(logging.INFO)
 
 class Cc1101Configurator:
     _preamble_lengths = [2, 3, 4, 6, 8, 12, 16, 24]
-    def __init__(self, preset=rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, patable=[0x8E,   0,   0,   0,   0,   0,   0,   0], fosc=26e6):
-        self._registers = preset
-        self._patable = patable
+    def __init__(self, preset=rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens, fosc=26e6):
+        self._preset = preset
+        self._registers = preset["registers"]
+        self._patable = preset["patable"]
         self._fosc = fosc
 
 
