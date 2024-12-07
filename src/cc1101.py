@@ -70,6 +70,10 @@ class Cc1101:
         self.configurator._patable = preset["patable"]
         self.set_configuration()
     
+    def idle(self):
+        logger.info("Setting device to IDLE state")
+        self.driver.command_strobe(addresses.SIDLE)
+
     def transmit(self, data:bytes, blocking=True):
         """Transmit the data.
 
@@ -99,13 +103,17 @@ class Cc1101:
             raise ValueError(f"Device must be in state IDLE(0x01) before transmitting. Current state: 0x{marc_state:02X}")
         
         self.driver.command_strobe(addresses.SFTX) # flush the TX FIFO
-        self.driver.write_burst(addresses.TXFIFO, list(data)) # write the data to the TX FIFO
         self.driver.command_strobe(addresses.STX) # start transmitting
+        for i in range(0, len(data)//self.driver.chunk_size + 1):
+            while self.driver.read_status_register(addresses.TXBYTES) > 55-self.driver.chunk_size:
+                time.sleep(self.driver.fifo_rw_interval)
+            self.driver.write_burst(addresses.TXFIFO, list(data[self.driver.chunk_size*i: min(self.driver.chunk_size*(i+1), len(data))])) # write the data to the TX FIFO
+            
         
         if blocking:
-            if self.driver.gdo0 is not None:
-                # Start transmission
-                self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, 1000)
+            #if self.driver.gdo0 is not None:
+            #    # Start transmission
+            #    self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, 1000)
 
             if self.driver.gdo0 is not None:
                 # End of transmission
@@ -138,10 +146,10 @@ class Cc1101:
             trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES)-1)
             if trunc is not None:
                 data += trunc
-            time.sleep(0.01)
+            time.sleep(self.driver.fifo_rw_interval)
         trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES))
         data += trunc
-        self.driver.command_strobe(addresses.SIDLE)
+        #self.driver.command_strobe(addresses.SIDLE)
         
         length = None
         rssi = None
@@ -149,7 +157,7 @@ class Cc1101:
         crc_ok = False
 
         if self.configurator.get_packet_length_mode() == 0:
-            length = length(data)
+            length = len(data)
         elif self.configurator.get_packet_length_mode() == 1:
             length = data[0]
             data = data[1:]
