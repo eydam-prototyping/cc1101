@@ -72,3 +72,21 @@ The choice of modulation format impacts key aspects of the communication, includ
 Like 2-FSK, but with 4 Frequencies.
 
 ![4-FSK Modulation](img/Sample_4-FSK.png)
+
+#### ASK (Amplitude Shift Keying) / OOK (On-Off Keying)
+
+ASK (Amplitude Shift Keying) is a modulation scheme where the amplitude of the carrier signal varies to represent binary data. Unlike OOK, which is a subset of ASK with only two states (presence or absence of a signal), ASK can include more amplitude levels for more complex data encoding, though in most applications, it uses only two states:
+
+High Amplitude represents binary 1.
+Low Amplitude (or Zero in OOK) represents binary 0.
+ASK/OOK is commonly used in simple, low-power communication systems such as wireless sensors, keyless entry systems, and remote controls.
+
+**Relevant CC1101 Parameters:**
+
+  * PA-Table Setting: \
+      Byte 0 represents the power for a logical zero\
+      Byte 1 represents the power for a logical one
+
+  * FREND0.PA_POWER represents the PA power setting, that is used for a logical one. Default is 1.
+
+![ASK/OOK Modulation](img/Sample_ASK_OOK.png)
