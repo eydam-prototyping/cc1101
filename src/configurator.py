@@ -102,6 +102,24 @@ class Cc1101Configurator:
     def set_frequency_offset_compensation_setting(self, FOC_BS_CS_GATE: int, FOC_PRE_K: int, FOC_POST_K: int, FOC_LIMIT: int):
         """see 14.1 Frequency Offset Compensation
 
+        FOC_BS_CS_GATE: 
+            0: Frequency offset compensation always on
+            1: Frequency offset compensation freezes until carrier sense is asserted
+        FOC_PRE_K: The frequency compensation loop gain to be used before a sync word is detected.
+            0: K
+            1: 2K
+            2: 3K
+            3: 4K
+        FOC_POST_K: The frequency compensation loop gain to be used after a sync word is detected.
+            0: same as FOC_PRE_K
+            1: K/2
+        FOC_LIMIT: The saturation point for the frequency offset compensation algorithm:
+            0: ±0 No compensation
+            1: ±BW_CHAN/8 
+            2: ±BW_CHAN/4
+            3: ±BW_CHAN/2
+            Must be set to 0 for ASK/OOK modulation
+
         Args:
             FOC_BS_CS_GATE (int): see get_frequency_offset_compensation_setting
             FOC_PRE_K (int): see get_frequency_offset_compensation_setting
@@ -130,8 +148,20 @@ class Cc1101Configurator:
         return self._registers[addr.MDMCFG2] & 0x07
     
     def set_sync_mode(self, sync_mode: int):
-        """see 14.3 Byte Synchronization
+        """see 14.3 Byte Synchronization\
+        
 
+        Options:
+
+            0: No preamble/sync
+            1: 15/16 sync word bits detected
+            2: 16/16 sync word bits detected
+            3: 30/32 sync word bits detected
+            4: No preamble/sync, carrier-sense above threshold
+            5: 15/16 + carrier-sense above threshold
+            6: 16/16 + carrier-sense above threshold
+            7: 30/32 + carrier-sense above threshold
+        
         Args:
             sync_mode (int): see get_sync_mode
         """
@@ -199,7 +229,13 @@ class Cc1101Configurator:
         return self._registers[addr.PKTCTRL0] & 0x03
     
     def set_packet_length_mode(self, mode: int):
-        """see 15.2 Packet Format
+        """see 15.2 Packet Format\
+        
+        Options:
+        
+            0: Fixed packet length mode
+            1: Variable packet length mode
+            2: Infinite packet length mode
 
         Args:
             mode (int): see get_packet_length_mode
@@ -251,7 +287,14 @@ class Cc1101Configurator:
         return self._registers[addr.PKTCTRL1] & 0x03
 
     def set_address_check_mode(self, mode: int):
-        """see 15.2 Packet Format
+        """see 15.2 Packet Format\
+
+        Options:
+
+            0: No address check
+            1: Address check, no broadcast
+            2: Address check, 0 (0x00) broadcast
+            3: Address check, 0 (0x00) and 255 (0xFF) broadcast
 
         Args:
             mode (int): see get_address_check_mode
@@ -380,8 +423,16 @@ class Cc1101Configurator:
         return self._registers[addr.MDMCFG2] >> 4 & 0x07
     
     def set_modulation_format(self, format: int):
-        """see 16 Modulation Format
+        """see 16 Modulation Format\
 
+        Options:
+            
+            0: 2-FSK
+            1: GFSK
+            3: ASK/OOK
+            4: 4-FSK
+            7: MSK
+        
         Args:
             format (int): Modulation format
         """
