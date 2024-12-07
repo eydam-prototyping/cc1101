@@ -297,7 +297,7 @@ class TestCc1101Configurator(unittest.TestCase):
             else:
                 set_method(expected_value)
             # verify that nothing else changed
-            self.assertEqual(configurator._registers, presets.rf_setting_sample_1)
+            self.assertEqual(configurator._registers, presets.rf_setting_sample_1["registers"])
         
 
 if __name__ == '__main__':
