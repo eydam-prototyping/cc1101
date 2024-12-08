@@ -156,9 +156,9 @@ class Cc1101:
         lqi = None
         crc_ok = False
 
-        if self.configurator.get_packet_length_mode() == 0:
+        if self.configurator.get_packet_length_mode() == 0: # fixed length mode
             length = len(data)
-        elif self.configurator.get_packet_length_mode() == 1:
+        elif self.configurator.get_packet_length_mode() == 1: # variable length mode
             length = data[0]
             data = data[1:]
 
@@ -167,6 +167,7 @@ class Cc1101:
             lqi = data[-1] & 0x7F
             crc_ok = data[-1] & 0x80 == 0x80
             data = data[:-2]
+            length -= 2
         
         packet = Received_Packet(bytes(data), length, rssi, lqi, crc_ok)
         return packet
