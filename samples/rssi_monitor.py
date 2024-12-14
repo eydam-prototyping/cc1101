@@ -22,6 +22,11 @@ cc1101.reset()
 # Load a preset configuration
 cc1101.load_preset(presets.rf_setting_dr5k7_dev5k2_2fsk_rxbw58k)
 
+# Set the sync word to something other than your transmitter, beacuse 
+# otherwise the cc1101 will process the packet and leave RX state
+cc1101.configurator.set_sync_word([0x00, 0x00])
+cc1101.set_configuration()
+
 # Set the device to receive mode
 cc1101.set_receive_mode()
 
