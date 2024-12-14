@@ -20,6 +20,21 @@ class Received_Packet:
 
 class Cc1101:
     def __init__(self, driver):
+        """Initialize a CC1101 device.
+        This method initializes the CC1101 radio device by resetting it and verifying
+        its part number and version. It sets up communication with the device and loads
+        the configuration.
+        Args:
+            driver: The driver object that handles low-level communication with the CC1101 device.
+        Raises:
+            Warning: If the chip's part number is not 0x00 or version is not 0x04/0x14,
+                    a warning is logged but operation continues.
+        Example:
+            >>> from cc1101 import Cc1101
+            >>> from rpi_driver import Driver
+            >>> driver = Driver(spi_bus=0, cs_pin=0, gdo0=23)
+            >>> cc1101 = Cc1101(driver)
+        """
         logger.info("Initializing CC1101 device")
         self.driver = driver
         self.reset()
@@ -36,22 +51,74 @@ class Cc1101:
         self.get_configuration()
     
     def reset(self):
+        """Reset the CC1101 device.
+
+        Performs a reset of the CC1101 radio module by sending the SRES command strobe.
+        This resets all configuration registers to their default values.
+
+        Returns:
+            None
+        """
         logger.debug("Resetting CC1101 device")
         self.driver.command_strobe(addresses.SRES)
 
     def get_chip_partnum(self):
+        """
+        Reads and returns the chip part number from the CC1101 device.
+        The part number is read from the PARTNUM status register, which contains
+        a factory-programmed identification number for the device.
+        Returns:
+            int: The chip part number as an 8-bit integer value.
+                For CC1101, this should typically return 0x00.
+        Example:
+            >>> partnum = cc1101.get_chip_partnum()
+            >>> print(f"Chip part number: 0x{partnum:02X}")
+        """
         logger.debug("Reading chip partnum")
         partnum = self.driver.read_status_register(addresses.PARTNUM)
         logger.debug(f"Chip partnum: 0x{partnum:02X}")
         return partnum
     
     def get_chip_version(self):
+        """Read the chip version from the CC1101 device.
+
+        This method reads the version register of the CC1101 chip using the status register
+        VERSION. The version is returned as a single byte value.
+
+        Returns:
+            int: The chip version as a hexadecimal value (e.g. 0x14 for version 1.4)
+
+        Example:
+            >>> version = cc1101.get_chip_version()
+            >>> print(f"Chip version: 0x{version:02X}")
+            Chip version: 0x14
+        """
         logger.debug("Reading chip version")
         version = self.driver.read_status_register(addresses.VERSION)
         logger.debug(f"Chip version: 0x{version:02X}")
         return version
     
     def get_rssi_raw(self):
+        """Reads raw RSSI (Received Signal Strength Indicator) value from the CC1101 chip.
+
+        The device must be in RX or RX_END state to get a valid RSSI reading.
+
+        Returns:
+            int: Raw RSSI value from the RSSI status register
+
+        Raises:
+            ValueError: If device is not in RX (0x0D) or RX_END (0x0E) state
+
+        Example:
+            >>> cc1101.set_receive_mode()
+            >>> rssi = cc1101.get_rssi_raw()
+            >>> print(f"Raw RSSI value: {rssi}")
+            Raw RSSI value: 100
+
+        Note:
+            This returns the raw register value. For the normalized RSSI in dBm, 
+            use get_rssi_dbm() instead.
+        """
         logger.debug("Reading raw RSSI value")
         if self.get_marc_state() not in [addresses.MARCSTATE_RX, addresses.MARCSTATE_RX_END]:
             logger.error(f"Device must be in state RX(0x0D) or RX_END(0x0E) before reading RSSI. Current state: 0x{self.get_marc_state():02X}")
@@ -59,6 +126,29 @@ class Cc1101:
         return self.driver.read_status_register(addresses.RSSI)
     
     def get_rssi_dbm(self):
+        """
+        Convert raw RSSI value to dBm.
+
+        The CC1101 RSSI value is represented in 2's complement format.
+        For converting the RSSI reading to absolute power level in dBm,
+        the following formulas are used:
+
+        - If RSSI_raw >= 128:
+            Power_dBm = (RSSI_raw - 256) / 2 - RSSI_offset
+        - If RSSI_raw < 128:
+            Power_dBm = RSSI_raw / 2 - RSSI_offset
+
+        Where RSSI_offset is 74. (see Data Sheet)
+
+        Returns:
+            float: RSSI value in dBm
+
+        Example:
+            >>> cc1101.set_receive_mode()
+            >>> rssi_dbm = cc1101.get_rssi_dbm()
+            >>> print(f"RSSI in dBm: {rssi_dbm}")
+            RSSI in dBm: -76.0
+        """
         rssi_raw = self.get_rssi_raw()
         rssi_offset = 74
         if rssi_raw >= 128:
@@ -67,6 +157,14 @@ class Cc1101:
             return rssi_raw / 2 - rssi_offset
 
     def get_configuration(self):
+        """Read the configuration from the CC1101 device.
+        Reads a burst of 47 configuration registers starting from IOCFG2 and the 8-byte PATABLE.
+        Updates the internal configurator state with the read values.
+        Returns:
+            tuple: A tuple containing:
+                - registers (bytes): 47 configuration register values
+                - patable (bytes): 8-byte power table values
+        """
         logger.debug("Reading configuration from device")
         registers = self.driver.read_burst(addresses.IOCFG2, 47)
         patable = self.driver.read_burst(addresses.PATABLE, 8)
@@ -75,21 +173,79 @@ class Cc1101:
         return registers, patable
     
     def set_configuration(self):
+        """
+        Writes the current configuration to the CC1101 device.
+
+        This method performs two operations:
+        1. Writes the configuration registers using burst mode
+        2. Writes the PA (Power Amplifier) table using burst mode
+
+        The configuration values are taken from the internal configurator object 
+        which holds the register values and PA table settings.
+
+        No parameters are required as it uses the internal configuration state.
+
+        Returns:
+            None
+
+        Example:
+            >>> cc1101.configurator.set_data_rate_baud(9600)
+            >>> cc1101.set_configuration()
+        """
         logger.debug("Writing configuration to device")
         self.driver.write_burst(addresses.IOCFG2, self.configurator._registers)
         self.driver.write_burst(addresses.PATABLE, self.configurator._patable)
 
     def load_preset(self, preset):
+        """
+        Load predefined configuration preset for the CC1101 module.
+
+        This method sets the configuration registers and PA table according to a given preset
+        configuration dictionary.
+
+        Args:
+            preset (dict): A dictionary containing the preset configuration with the following keys:
+                - 'name': String identifier of the preset
+                - 'registers': List of register configurations
+                - 'patable': Power amplifier table values
+
+        Example:
+        >>> preset = {
+                'name': 'my_config',
+                'registers': [...],
+                'patable': [...]
+            }
+        >>> cc1101.load_preset(preset)
+        """
         logger.debug(f"Loading preset {preset['name']}")
         self.configurator._registers = preset["registers"]
         self.configurator._patable = preset["patable"]
         self.set_configuration()
     
     def idle(self):
+        """Sets the CC1101 device to IDLE state.
+
+        This state reduces power consumption by stopping all active transmission
+        or reception operations. The device remains powered on and configured,
+        but does not process incoming or outgoing data.
+
+        Returns:
+            None
+        """
         logger.info("Setting device to IDLE state")
         self.driver.command_strobe(addresses.SIDLE)
 
     def set_receive_mode(self):
+        """
+        Sets the CC1101 device to receive mode by sending the SRX strobe command.
+
+        The method sends the SRX (RX enable) command strobe to the CC1101 device,
+        which switches it to receive mode. After sending the command, it waits for
+        10ms to ensure the mode change is complete.
+
+        Returns:
+            None
+        """
         logger.info("Setting device to receive mode")
         self.driver.command_strobe(addresses.SRX)
         time.sleep(0.01)
