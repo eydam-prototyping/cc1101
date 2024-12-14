@@ -51,6 +51,21 @@ class Cc1101:
         logger.debug(f"Chip version: 0x{version:02X}")
         return version
     
+    def get_rssi_raw(self):
+        logger.debug("Reading raw RSSI value")
+        if self.get_marc_state() not in [addresses.MARCSTATE_RX, addresses.MARCSTATE_RX_END]:
+            logger.error(f"Device must be in state RX(0x0D) or RX_END(0x0E) before reading RSSI. Current state: 0x{self.get_marc_state():02X}")
+            raise ValueError(f"Device must be in state RX(0x0D) or RX_END(0x0E) before reading RSSI. Current state: 0x{self.get_marc_state():02X}")
+        return self.driver.read_status_register(addresses.RSSI)
+    
+    def get_rssi_dbm(self):
+        rssi_raw = self.get_rssi_raw()
+        rssi_offset = 74
+        if rssi_raw >= 128:
+            return (rssi_raw - 256) / 2 - rssi_offset
+        else:
+            return rssi_raw / 2 - rssi_offset
+
     def get_configuration(self):
         logger.debug("Reading configuration from device")
         registers = self.driver.read_burst(addresses.IOCFG2, 47)
@@ -73,6 +88,11 @@ class Cc1101:
     def idle(self):
         logger.info("Setting device to IDLE state")
         self.driver.command_strobe(addresses.SIDLE)
+
+    def set_receive_mode(self):
+        logger.info("Setting device to receive mode")
+        self.driver.command_strobe(addresses.SRX)
+        time.sleep(0.01)
 
     def transmit(self, data:bytes, blocking=True):
         """Transmit the data.
