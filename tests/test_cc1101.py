@@ -1,11 +1,7 @@
 import unittest
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from cc1101 import Cc1101
-from rpi_driver import Driver
+from epCC1101 import Driver, Cc1101
 
 class TestCc1101(unittest.TestCase):
     def setUp(self):

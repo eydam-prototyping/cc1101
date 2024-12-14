@@ -1,17 +1,14 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from epCC1101 import presets
+from epCC1101.configurator import Cc1101Configurator
+import epCC1101.addresses as addr
 
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from configurator import Cc1101Configurator
-import addresses as addr
-import presets
-
 class TestCc1101Configurator(unittest.TestCase):
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_base_frequency_hz(self, mock_preset):
+    def test_base_frequency_hz(self):
         configurator = Cc1101Configurator()
 
         configurator.set_base_frequency_hz(915e6)
@@ -20,8 +17,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator._registers[addr.FREQ0], 0x3B)
         self.assertEqual(int(configurator.get_base_frequency_hz()), 914999969)
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_data_rate_baud(self, mock_preset):
+    def test_data_rate_baud(self):
         configurator = Cc1101Configurator()
         
         configurator.set_data_rate_baud(1200)
@@ -34,8 +30,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator._registers[addr.MDMCFG3] & 0xFF, 0x22)
         self.assertEqual(int(configurator.get_data_rate_baud()), 115051)   
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_receiver_bandwidth_hz(self, mock_preset):
+    def test_receiver_bandwidth_hz(self):
         configurator = Cc1101Configurator()
         
         configurator.set_receiver_bandwidth_hz(58e3)
@@ -53,8 +48,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator._registers[addr.MDMCFG4] >> 4 & 0x03, 0x00)
         self.assertEqual(int(configurator.get_receiver_bandwidth_hz()), 812.5e3)   
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_frequency_offset_compensation_setting(self, mock_preset):
+    def test_frequency_offset_compensation_setting(self):
         configurator = Cc1101Configurator()
 
         configurator.set_frequency_offset_compensation_setting(1, 1, 1, 1)
@@ -66,8 +60,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_frequency_offset_compensation_setting(), (0, 2, 0, 3))
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_sync_mode(self, mock_preset):
+    def test_sync_mode(self):
         configurator = Cc1101Configurator()
         
         configurator.set_sync_mode(0x00)
@@ -79,8 +72,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_sync_mode(), 0x07)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_sync_word(self, mock_preset):
+    def test_sync_word(self):
         configurator = Cc1101Configurator()
         
         configurator.set_sync_word([0x01, 0x02])
@@ -88,8 +80,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_sync_word(), [0x01, 0x02])
         
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_data_whitening_enable(self, mock_preset):
+    def test_data_whitening_enable(self):
         configurator = Cc1101Configurator()
         
         configurator.set_data_whitening_enable(True)
@@ -100,8 +91,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator._registers[addr.PKTCTRL0] & 0x40, 0x00)
         self.assertEqual(configurator.get_data_whitening_enable(), False)
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_preamble_length_bytes(self, mock_preset):
+    def test_preamble_length_bytes(self):
         configurator = Cc1101Configurator()
 
         # Test valid preamble lengths
@@ -114,8 +104,7 @@ class TestCc1101Configurator(unittest.TestCase):
         with self.assertRaises(ValueError):
             configurator.set_preamble_length_bytes(5)
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_packet_length_mode(self, mock_preset):
+    def test_packet_length_mode(self):
         configurator = Cc1101Configurator()
 
         for i in range(3):
@@ -124,8 +113,7 @@ class TestCc1101Configurator(unittest.TestCase):
             self.assertEqual(configurator.get_packet_length_mode(), i)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_packet_length(self, mock_preset):
+    def test_packet_length(self):
         configurator = Cc1101Configurator()
 
         configurator.set_packet_length(0x12)
@@ -137,8 +125,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_packet_length(), 0x34)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_crc_enable(self, mock_preset):
+    def test_crc_enable(self):
         configurator = Cc1101Configurator()
 
         configurator.set_crc_enable(True)
@@ -150,8 +137,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_crc_enable(), False)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_address_check_mode(self, mock_preset):
+    def test_address_check_mode(self):
         configurator = Cc1101Configurator()
 
         for i in range(4):
@@ -160,8 +146,7 @@ class TestCc1101Configurator(unittest.TestCase):
             self.assertEqual(configurator.get_address_check_mode(), i)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_address(self, mock_preset):
+    def test_address(self):
         configurator = Cc1101Configurator()
 
         configurator.set_address(0x12)
@@ -169,8 +154,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_address(), 0x12)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_crc_auto_flush(self, mock_preset):
+    def test_crc_auto_flush(self):
         configurator = Cc1101Configurator()
 
         configurator.set_crc_auto_flush(True)
@@ -182,8 +166,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_crc_auto_flush(), False)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_append_status_enabled(self, mock_preset):
+    def test_append_status_enabled(self):
         configurator = Cc1101Configurator()
 
         configurator.set_append_status_enabled(True)
@@ -195,8 +178,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_append_status_enabled(), False)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_fec_enable(self, mock_preset):
+    def test_fec_enable(self):
         configurator = Cc1101Configurator()
 
         configurator.set_fec_enable(True)
@@ -208,8 +190,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_fec_enable(), False)
 
     
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_GDOx_config(self, mock_preset):
+    def test_GDOx_config(self):
         configurator = Cc1101Configurator()
 
         for i in range(2):
@@ -218,8 +199,7 @@ class TestCc1101Configurator(unittest.TestCase):
             self.assertEqual(configurator.get_GDOx_config(i), 0x12)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_modulation_format(self, mock_preset):
+    def test_modulation_format(self):
         configurator = Cc1101Configurator()
 
         for i in [0, 1, 2, 4, 7]:
@@ -227,8 +207,7 @@ class TestCc1101Configurator(unittest.TestCase):
             self.assertEqual(configurator._registers[addr.MDMCFG2] & 0x70, i << 4)
             self.assertEqual(configurator.get_modulation_format(), i)
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_GDOx_inverted(self, mock_preset):
+    def test_GDOx_inverted(self):
         configurator = Cc1101Configurator()
 
         for i in range(2):
@@ -241,8 +220,7 @@ class TestCc1101Configurator(unittest.TestCase):
             self.assertEqual(configurator.get_GDOx_inverted(i), False)
 
     
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_manchester_encoding_enable(self, mock_preset):
+    def test_manchester_encoding_enable(self):
         configurator = Cc1101Configurator()
 
         configurator.set_manchester_encoding_enable(True)
@@ -254,8 +232,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator.get_manchester_encoding_enable(), False)
 
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_deviation_hz(self, mock_preset):
+    def test_deviation_hz(self):
         configurator = Cc1101Configurator()
 
         configurator.set_deviation_hz(5e3)
@@ -270,8 +247,7 @@ class TestCc1101Configurator(unittest.TestCase):
         self.assertEqual(configurator._registers[addr.DEVIATN], 0x51)
         self.assertEqual(int(configurator.get_deviation_hz()), 57128)
 
-    @patch('configurator.rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens', new_callable=lambda: [0]*0x30)
-    def test_sample_1(self, mock_preset):
+    def test_sample_1(self):
         configurator = Cc1101Configurator(preset=presets.rf_setting_sample_1)
 
         test_values = [
@@ -302,28 +278,3 @@ class TestCc1101Configurator(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-"""
-(configurator.get_data_rate_baud(), 115051),
-(configurator.get_receiver_bandwidth_hz(), 325000),
-(configurator.get_frequency_offset_compensation_setting(), (0, 6, 0, 0)),
-(configurator.get_sync_mode(), 7),
-(configurator.get_sync_word(), [0xD3, 0x91]),
-(configurator.get_data_whitening_enable(), True),
-(configurator.get_preamble_length_bytes(), 0x21),
-(configurator.get_packet_length_mode(), 2),
-(configurator.get_packet_length(), 0x62),
-(configurator.get_crc_enable(), True),
-(configurator.get_address_check_mode(), 0),
-(configurator.get_address(), 0),
-(configurator.get_crc_auto_flush(), False),
-(configurator.get_append_status_enable(), False),
-(configurator.get_fec_enable(), False),
-(configurator.get_GDOx_config(0), 0x30),
-(configurator.get_GDOx_config(1), 0x18),
-(configurator.get_modulation_format(), 1),
-(configurator.get_GDOx_inverted(0), False),
-(configurator.get_GDOx_inverted(1), False),
-(configurator.get_manchester_encoding_enable(), False),
-(configurator.get_deviation_hz(), 32500)"""
