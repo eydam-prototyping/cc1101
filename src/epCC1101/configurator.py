@@ -1,6 +1,6 @@
-import addresses as addr
-import options as opt
-from presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens
+import epCC1101.addresses as addr
+import epCC1101.options as opt
+from epCC1101.presets import rf_setting_dr1k2_dev5k2_2fsk_rxbw58k_sens
 import math
 import logging
 

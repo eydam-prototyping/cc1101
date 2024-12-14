@@ -1,5 +1,5 @@
-import addresses
-from configurator import Cc1101Configurator
+import epCC1101.addresses as addresses
+from epCC1101.configurator import Cc1101Configurator
 import logging
 import RPi.GPIO as GPIO
 import time

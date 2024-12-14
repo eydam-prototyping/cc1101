@@ -1,15 +1,8 @@
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-
-
+from epCC1101 import Cc1101, Driver, presets
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from cc1101 import Cc1101
-from rpi_driver import Driver
-import presets
 
 # Create a driver object
 driver = Driver(spi_bus=0, cs_pin=0, gdo0=23)

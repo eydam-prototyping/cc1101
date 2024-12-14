@@ -1,6 +1,6 @@
 import spidev
 import logging
-import addresses
+import epCC1101.addresses as addresses
 import RPi.GPIO as GPIO
 
 logger = logging.getLogger(__name__)
