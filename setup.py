@@ -2,9 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name="epCC1101",
-    version="0.1.0",
+    version="0.1.1",
     description="CC1101 Driver for Raspberry Pi and Micropython",
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf-8').read(),
+    long_description_content_type='text/markdown',
     author="Tobias Eydam",
     author_email="eydam-prototyping@outlook.com",
     url="https://github.com/eydam-prototyping/cc1101",

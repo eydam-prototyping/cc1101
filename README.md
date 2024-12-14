@@ -2,6 +2,25 @@
 
 This project provides a Python driver for the CC1101 transceiver chip, enabling seamless integration with Raspberry Pi and other compatible platforms. The driver supports data transmission and reception, making it ideal for wireless communication projects.
 
+## Wiring
+
+Connect two devices, if you want to run all samples. Otherwise you only need one.
+
+| CC1101 (1) | CC1101 (2) | Raspberry Pi | Meaning      |
+|------------|------------|--------------|--------------|
+| VDD        | VDD        | 3.3V (17)    | Power Supply |
+| GND        | GND        | GND (23)     | Ground       |
+| MOSI       | MOSI       | GPIO10 (19)  | SPI MOSI     |
+| MISO       | MISO       | GPIO9 (21)   | SPI MISO     |
+| SCK        | SCK        | GPIO11 (23)  | SPI SCLK     |
+| CSN        | -          | GPIO8 (24)   | SPI CE0      |
+| -          | CSN        | GPIO7 (26)   | SPI CE1      |
+| GDO0       | -          | GPIO23 (16)  | RX/TX Done   |
+| -          | GDO0       | GPIO24 (18)  | RX/TX Done   |
+| GDO2       | -          | -            | -            |
+| -          | GDO2       | -            | -            |
+
+
 ## Usage
 * Connect the CC1101 module to your hardware as per your wiring setup.
 
