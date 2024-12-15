@@ -24,20 +24,20 @@ Connect two devices, if you want to run all samples. Otherwise you only need one
 ## Usage
 * Connect the CC1101 module to your hardware as per your wiring setup.
 
-* Run a sample script:
+* Run an example script:
 
     * For transmission:
         ```bash
-        python samples/transmitter.py
+        python examples/transmitter.py
         ```
     * For reception:
         ```bash
-        python samples/receiver.py
+        python examples/receiver.py
         ```
 
 ## Project Structure
 * **src/:** Contains the main driver code.
-* **samples/**: Example scripts for transmission and reception.
+* **examples/**: Example scripts for transmission and reception.
 * **tests/**: Unit tests for the driver.
 
 ## Meaning of Parameters
