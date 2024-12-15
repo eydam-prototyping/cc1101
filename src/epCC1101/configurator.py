@@ -477,8 +477,8 @@ class Cc1101Configurator:
             deviation_hz (int): Frequency deviation in Hz
         """
         dev_e = math.floor(
-            math.log2(deviation_hz * 2**15 / self._fosc)
-        ) - 1
+            math.log2(deviation_hz * 2**14 / self._fosc)
+        )
         dev_m = math.floor(
             deviation_hz * 2**17 / (self._fosc * 2**dev_e) - 8
         )
@@ -500,6 +500,51 @@ class Cc1101Configurator:
         """
         freq = round(freq_hz*2**16/self._fosc).to_bytes(3, 'big')
         self._registers[addr.FREQ2:addr.FREQ0+1] = [freq[0], freq[1], freq[2]]
+
+    def get_channel_spacing_hz(self):
+        """see 21 Frequency Programming
+
+        Returns:
+            int: Channel spacing in Hz
+        """
+        spacing_e = self._registers[addr.MDMCFG1] & 0x03
+        spacing_m = self._registers[addr.MDMCFG0]
+        return round((256 + spacing_m) * (self._fosc / 2**18) * 2**spacing_e)
+        
+    def set_channel_spacing_hz(self, spacing_hz: int):
+        """see 21 Frequency Programming
+
+        Args:
+            spacing_hz (int): Channel spacing in Hz
+        """
+        spacing_e = math.floor(
+            math.log2(spacing_hz * 2**10 / self._fosc)
+        )
+        spacing_m = round(
+            spacing_hz * 2**18 / (self._fosc * 2**spacing_e) - 256
+        )
+        if spacing_m == 256:
+            spacing_e += 1
+            spacing_m = 0
+
+        self._registers[addr.MDMCFG1] = (self._registers[addr.MDMCFG1] & 0xFC) | spacing_e
+        self._registers[addr.MDMCFG0] = spacing_m
+
+    def get_channel_number(self):
+        """see 21 Frequency Programming
+
+        Returns:
+            int: Channel number
+        """
+        return self._registers[addr.CHANNR]
+    
+    def set_channel_number(self, channel: int):
+        """see 21 Frequency Programming
+
+        Args:
+            channel (int): Channel number
+        """
+        self._registers[addr.CHANNR] = channel
 
     def get_patable(self):
         """see 10.6 PATABLE Access

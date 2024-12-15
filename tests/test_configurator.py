@@ -3,10 +3,6 @@ from epCC1101 import presets
 from epCC1101.configurator import Cc1101Configurator
 import epCC1101.addresses as addr
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-
 class TestCc1101Configurator(unittest.TestCase):
     def test_base_frequency_hz(self):
         configurator = Cc1101Configurator()
@@ -246,6 +242,35 @@ class TestCc1101Configurator(unittest.TestCase):
         configurator.set_deviation_hz(58e3)
         self.assertEqual(configurator._registers[addr.DEVIATN], 0x51)
         self.assertEqual(int(configurator.get_deviation_hz()), 57128)
+
+    def test_channel_spacing_hz(self):
+        configurator = Cc1101Configurator()
+
+        configurator.set_channel_spacing_hz(100e3)
+        self.assertEqual(configurator._registers[addr.MDMCFG1] & 0x03, 0x01)
+        self.assertEqual(configurator._registers[addr.MDMCFG0], 0xF8)
+        self.assertEqual(int(configurator.get_channel_spacing_hz()), 99976)
+
+        configurator.set_channel_spacing_hz(200e3)
+        self.assertEqual(configurator._registers[addr.MDMCFG1] & 0x03, 0x02)
+        self.assertEqual(configurator._registers[addr.MDMCFG0], 0xF8)
+        self.assertEqual(int(configurator.get_channel_spacing_hz()), 199951)
+
+        configurator.set_channel_spacing_hz(350e3)
+        self.assertEqual(configurator._registers[addr.MDMCFG1] & 0x03, 0x03)
+        self.assertEqual(configurator._registers[addr.MDMCFG0], 0xB9)
+        self.assertEqual(int(configurator.get_channel_spacing_hz()), 349915)
+
+    def test_channel_number(self):
+        configurator = Cc1101Configurator()
+
+        configurator.set_channel_number(0x12)
+        self.assertEqual(configurator._registers[addr.CHANNR], 0x12)
+        self.assertEqual(configurator.get_channel_number(), 0x12)
+
+        configurator.set_channel_number(0x34)
+        self.assertEqual(configurator._registers[addr.CHANNR], 0x34)
+        self.assertEqual(configurator.get_channel_number(), 0x34)
 
     def test_sample_1(self):
         configurator = Cc1101Configurator(preset=presets.rf_setting_sample_1)
