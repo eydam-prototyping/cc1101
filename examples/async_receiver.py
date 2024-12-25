@@ -23,9 +23,9 @@ cc1101.driver.write_burst(addr.PKTCTRL0, [0x32])  # Async, no CRC
 cc1101.driver.write_burst(addr.PKTCTRL1, [0x04]) 
 cc1101.driver.write_burst(addr.IOCFG0, [0x0E]) 
 cc1101.driver.write_burst(addr.IOCFG2, [0x0D]) 
-cc1101.driver.write_burst(addr.AGCTRL0, [0x91])
-cc1101.driver.write_burst(addr.AGCTRL1, [0x40])
-cc1101.driver.write_burst(addr.AGCTRL2, [0x07]) 
+cc1101.driver.write_burst(addr.AGCCTRL0, [0x91])
+cc1101.driver.write_burst(addr.AGCCTRL1, [0x40])
+cc1101.driver.write_burst(addr.AGCCTRL2, [0x07]) 
 
 cc1101.get_configuration()
 

@@ -20,9 +20,9 @@ cc1101.configurator.set_sync_word([0xaa, 0xaa])
 cc1101.set_configuration()
 
 cc1101.driver.write_burst(addr.IOCFG0, [0x0E]) 
-cc1101.driver.write_burst(addr.AGCTRL0, [0x91])
-cc1101.driver.write_burst(addr.AGCTRL1, [0x40])
-cc1101.driver.write_burst(addr.AGCTRL2, [0x07]) 
+cc1101.driver.write_burst(addr.AGCCTRL0, [0x91])
+cc1101.driver.write_burst(addr.AGCCTRL1, [0x40])
+cc1101.driver.write_burst(addr.AGCCTRL2, [0x07]) 
 
 cc1101.get_configuration()
 

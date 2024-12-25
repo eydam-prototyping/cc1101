@@ -1,51 +1,12 @@
 import spidev
 import logging
 import epCC1101.addresses as addresses
+from epCC1101.driver import Abstract_Driver
 import RPi.GPIO as GPIO
-from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class Abstract_Driver:
-    gdo0 = None
-    gdo2 = None
-
-    @abstractmethod
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def read_byte(self, register:int):
-        return 0
-    
-    @abstractmethod
-    def read_status_register(self, register:int):
-        return 0
-    
-    @abstractmethod
-    def read_burst(self, register:int, length:int):
-        return []
-    
-    @abstractmethod
-    def command_strobe(self, register:int):
-        pass
-
-    @abstractmethod
-    def write_burst(self, register:int, data:bytes):
-        pass
-
-    @abstractmethod
-    def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
-        pass
-
-    @abstractmethod
-    def read_gdo0(self):
-        return 0
-    
-    @abstractmethod
-    def read_gdo2(self):
-        return 0
     
 
 class Driver(Abstract_Driver):

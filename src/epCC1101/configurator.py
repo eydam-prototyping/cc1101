@@ -547,6 +547,203 @@ class Cc1101Configurator:
         """
         self._registers[addr.CHANNR] = channel
 
+    def get_packet_format(self):
+        """see 27 Asynchronous and Synchronous Serial Operation
+
+        Returns:
+            [int]: Packet format
+        """
+        return (self._registers[addr.PKTCTRL0] >> 4) & 0x03
+
+    def set_packet_format(self, packet_format):
+        """see 27 Asynchronous and Synchronous Serial Operation
+
+        Args:
+            packet_format ([int]): Packet format
+        """
+        assert 0 <= packet_format <= 3, f"Invalid packet format: {packet_format}. Must be between 0 and 3"
+        self._registers[addr.PKTCTRL0] = (self._registers[addr.PKTCTRL0] & 0xCF) | (packet_format << 4)
+
+    def get_agc_filter_length(self):
+        """see ???
+        
+        2-FSK, 4-FSK, MSK: Sets the averaging length for the amplitude from the channel filter.  
+        
+        ASK, OOK: Sets the OOK/ASK decision boundary for OOK/ASK reception. 
+        
+        Value: Channel filter samples / OOK/ASK decision boundary
+        0: 8 samples / 4 dB
+        1: 16 samples / 8 dB
+        2: 32 samples / 12 dB
+        3: 64 samples / 16 dB
+        
+        Returns:
+            int: AGC filter length
+        """
+        return self._registers[addr.AGCCTRL0] & 0x03
+    
+    def set_agc_filter_length(self, length):
+        """see ???
+
+        Args:
+            length ([type]): AGC filter length
+        """
+        assert 0 <= length <= 3, f"Invalid AGC filter length: {length}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL0] = (self._registers[addr.AGCCTRL0] & 0xFC) | length
+
+    def get_agc_freeze(self):
+        """see ???
+
+        Returns:
+            int: AGC freeze
+        """
+        return (self._registers[addr.AGCCTRL0] >> 2) & 0x03
+
+    def set_agc_freeze(self, freeze):
+        """see ???
+
+        Args:
+            freeze ([type]): AGC freeze
+        """
+        assert 0 <= freeze <= 3, f"Invalid AGC freeze: {freeze}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL0] = (self._registers[addr.AGCCTRL0] & 0xF3) | (freeze << 2)
+
+    def get_agc_wait_time(self):
+        """see ???
+
+        Returns:
+            int: AGC wait time
+        """
+        return (self._registers[addr.AGCCTRL0] >> 4) & 0x03
+    
+    def set_agc_wait_time(self, wait_time):
+        """see ???
+
+        Args:
+            wait_time ([type]): AGC wait time
+        """
+        assert 0 <= wait_time <= 3, f"Invalid AGC wait time: {wait_time}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL0] = (self._registers[addr.AGCCTRL0] & 0xCF) | (wait_time << 4)
+
+    def get_agc_hyst_level(self):
+        """see ???
+
+        Returns:
+            int: AGC hysteresis level
+        """
+        return (self._registers[addr.AGCCTRL0] >> 6) & 0x03
+
+    def set_agc_hyst_level(self, hyst_level):
+        """see ???
+
+        Args:
+            hyst_level ([type]): AGC hysteresis level
+        """
+        assert 0 <= hyst_level <= 3, f"Invalid AGC hysteresis level: {hyst_level}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL0] = (self._registers[addr.AGCCTRL0] & 0x3F) | (hyst_level << 6)
+
+    def get_agc_carrier_sense_absolute_threshold(self):
+        """see ???
+
+        Returns:
+            int: AGC carrier sense absolute threshold
+        """
+        return self._registers[addr.AGCCTRL1] & 0x0F
+    
+    def set_agc_carrier_sense_absolute_threshold(self, threshold):
+        """see ???
+
+        Args:
+            threshold ([type]): AGC carrier sense absolute threshold
+        """
+        assert 0 <= threshold <= 15, f"Invalid AGC carrier sense absolute threshold: {threshold}. Must be between 0 and 15"
+        self._registers[addr.AGCCTRL1] = (self._registers[addr.AGCCTRL1] & 0xF0) | threshold
+    
+    def get_agc_carrier_sense_relative_threshold(self):
+        """see ???
+
+        Returns:
+            int: AGC carrier sense relative threshold
+        """
+        return (self._registers[addr.AGCCTRL1] >> 4) & 0x03
+    
+    def set_agc_carrier_sense_relative_threshold(self, threshold):
+        """see ???
+
+        Args:
+            threshold ([type]): AGC carrier sense relative threshold
+        """
+        assert 0 <= threshold <= 3, f"Invalid AGC carrier sense relative threshold: {threshold}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL1] = (self._registers[addr.AGCCTRL1] & 0xCF) | (threshold << 4)
+
+    def get_agc_lna_priority(self):
+        """see ???
+
+        Returns:
+            bool: AGC LNA priority
+        """
+        return (self._registers[addr.AGCCTRL1] >> 6) & 0x01
+    
+    def set_agc_lna_priority(self, priority):
+        """see ???
+
+        Args:
+            priority ([type]): AGC LNA priority
+        """
+        self._registers[addr.AGCCTRL1] = (self._registers[addr.AGCCTRL1] & 0xBF) | (priority << 6)
+
+    def get_agc_magn_target(self):
+        """see ???
+
+        Returns:
+            int: MAGN_TARGET
+        """
+        return self._registers[addr.AGCCTRL2] & 0x07
+    
+    def set_agc_magn_target(self, target):
+        """see ???
+
+        Args:
+            target ([type]): MAGN_TARGET
+        """
+        assert 0 <= target <= 7, f"Invalid MAGN_TARGET: {target}. Must be between 0 and 7"
+        self._registers[addr.AGCCTRL2] = (self._registers[addr.AGCCTRL2] & 0xF8) | target
+
+    def get_agc_max_lna_gain(self):
+        """see ???
+
+        Returns:
+            int: MAX_LNA_GAIN
+        """
+        return (self._registers[addr.AGCCTRL2] >> 3) & 0x07
+    
+    def set_agc_max_lna_gain(self, gain):
+        """see ???
+
+        Args:
+            gain ([type]): MAX_LNA_GAIN
+        """
+        assert 0 <= gain <= 7, f"Invalid MAX_LNA_GAIN: {gain}. Must be between 0 and 7"
+        self._registers[addr.AGCCTRL2] = (self._registers[addr.AGCCTRL2] & 0xC7) | (gain << 3)
+
+    def get_agc_max_dvga_gain(self):
+        """see ???
+
+        Returns:
+            int: MAX_DVGA_GAIN
+        """
+        return (self._registers[addr.AGCCTRL2] >> 6) & 0x03
+    
+    def set_agc_max_dvga_gain(self, gain):
+        """see ???
+
+        Args:
+            gain ([type]): MAX_DVGA_GAIN
+        """
+        assert 0 <= gain <= 3, f"Invalid MAX_DVGA_GAIN: {gain}. Must be between 0 and 3"
+        self._registers[addr.AGCCTRL2] = (self._registers[addr.AGCCTRL2] & 0x3F) | (gain << 6)
+
+
     def get_patable(self):
         """see 10.6 PATABLE Access
 
@@ -600,3 +797,16 @@ class Cc1101Configurator:
         logger.info(f"16.1 Frequency deviation: {self.get_deviation_hz()/1e3:.3f} kHz")
 
         logger.info(f"21   Base frequency: {self.get_base_frequency_hz()/1e6:.3f} MHz")
+
+        logger.info(f"27   Packet format: {self.get_packet_format()}")
+
+        logger.info(f"XXX  AGC filter length: {self.get_agc_filter_length()}")
+        logger.info(f"     AGC freeze: {self.get_agc_freeze()}")
+        logger.info(f"     AGC wait time: {self.get_agc_wait_time()}")
+        logger.info(f"     AGC hysteresis level: {self.get_agc_hyst_level()}")
+        logger.info(f"     AGC carrier sense absolute threshold: {self.get_agc_carrier_sense_absolute_threshold()}")
+        logger.info(f"     AGC carrier sense relative threshold: {self.get_agc_carrier_sense_relative_threshold()}")
+        logger.info(f"     AGC LNA priority: {self.get_agc_lna_priority()}")
+        logger.info(f"     AGC magnitude target: {self.get_agc_magn_target()}")
+        logger.info(f"     AGC max LNA gain: {self.get_agc_max_lna_gain()}")
+        logger.info(f"     AGC max DVGA gain: {self.get_agc_max_dvga_gain()}")
