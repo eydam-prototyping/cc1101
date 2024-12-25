@@ -165,6 +165,7 @@ class Cc1101Configurator:
         Args:
             sync_mode (int): see get_sync_mode
         """
+        assert 0 <= sync_mode <= 7, f"Invalid sync mode: {sync_mode}. Must be between 0 and 7"
         self._registers[addr.MDMCFG2] = (self._registers[addr.MDMCFG2] & 0xF8) | sync_mode
 
     def get_sync_word(self):

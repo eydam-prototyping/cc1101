@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="epCC1101",
-    version="0.1.1",
+    version="0.1.2",
     description="CC1101 Driver for Raspberry Pi and Micropython",
     long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
@@ -16,6 +16,11 @@ setup(
         "rpi-lgpio==0.6",
         "spidev==3.6",
     ],
+    entry_points={
+        'console_scripts': [
+            'cc1101=epCC1101.cli:main',
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",

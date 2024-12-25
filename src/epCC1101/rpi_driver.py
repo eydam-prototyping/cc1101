@@ -2,20 +2,64 @@ import spidev
 import logging
 import epCC1101.addresses as addresses
 import RPi.GPIO as GPIO
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class Driver:
+class Abstract_Driver:
+    gdo0 = None
+    gdo2 = None
+
+    @abstractmethod
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def read_byte(self, register:int):
+        return 0
+    
+    @abstractmethod
+    def read_status_register(self, register:int):
+        return 0
+    
+    @abstractmethod
+    def read_burst(self, register:int, length:int):
+        return []
+    
+    @abstractmethod
+    def command_strobe(self, register:int):
+        pass
+
+    @abstractmethod
+    def write_burst(self, register:int, data:bytes):
+        pass
+
+    @abstractmethod
+    def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
+        pass
+
+    @abstractmethod
+    def read_gdo0(self):
+        return 0
+    
+    @abstractmethod
+    def read_gdo2(self):
+        return 0
+    
+
+class Driver(Abstract_Driver):
     chunk_size = 32
     fifo_rw_interval = 0.01
-    def __init__(self, spi_bus:int=0, cs_pin:int=0, spi_speed_hz:int=55700, gdo0:int=None):
+    def __init__(self, spi_bus:int=0, cs_pin:int=0, spi_speed_hz:int=55700, gdo0:int=23, gdo1:int=None, gdo2:int=None):
         logger.info(f"Initializing SPI device on bus {spi_bus}, cs_pin {cs_pin}, spi_speed_hz {spi_speed_hz}")
 
         self.spi_bus = spi_bus
         self.cs_pin = cs_pin
         self.spi_speed_hz = spi_speed_hz
         self.gdo0 = gdo0
+        self.gdo1 = gdo1
+        self.gdo2 = gdo2
 
         self.spi = spidev.SpiDev()
         self.spi.open(self.spi_bus, self.cs_pin)
@@ -56,3 +100,6 @@ class Driver:
         
     def read_gdo0(self):
         return GPIO.input(self.gdo0)
+        
+    def read_gdo2(self):
+        return GPIO.input(self.gdo2)

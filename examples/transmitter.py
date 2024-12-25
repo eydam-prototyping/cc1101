@@ -13,7 +13,7 @@ cc1101.reset()
 
 # Load a preset configuration
 cc1101.load_preset(presets.rf_setting_dr5k7_dev5k2_2fsk_rxbw58k)
-
+cc1101.configurator.set_preamble_length_bytes(2)
 # Change the preset as you like
 # Set the data rate to 5700 baud
 cc1101.configurator.set_data_rate_baud(5700)
@@ -39,5 +39,5 @@ cc1101.configurator.print_description()
 # Transmit some data
 for i in range(5):
     logger.info("Transmitting...")
-    cc1101.transmit(bytes([i for i in range(1, 200)]))
+    cc1101.transmit(bytes([i for i in range(1, 100)]))
     time.sleep(1)

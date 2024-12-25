@@ -1,14 +1,50 @@
+import sys
 import epCC1101.addresses as addresses
 from epCC1101.configurator import Cc1101Configurator
+from epCC1101.rpi_driver import Abstract_Driver
 import logging
-import RPi.GPIO as GPIO
+
+if sys.implementation.name == "micropython":
+    raise NotImplementedError("This library is not compatible with MicroPython")
+elif sys.implementation.name == "cpython":
+    if sys.platform == "linux":
+        import RPi.GPIO as GPIO
+        import pigpio
+    if sys.platform.startswith("win"):
+        from stubs import GPIO
+        from stubs import pigpio
+
 import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class Received_Packet:
-    def __init__(self, payload:bytes, length:int, rssi:int, lqi:int=None, crc_ok:bool=None):
+    def __init__(self, timestamp:float, length_s:float, configurator:Cc1101Configurator):
+        self.timestamp = timestamp
+        self.length_s = length_s
+        self.configurator = configurator
+
+class Raw_Received_Packet(Received_Packet):
+    def __init__(self, edges:list, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.edges = edges
+
+    def get_bitstream(self):
+        bitstream = []
+        t_bit = 1/self.configurator.get_data_rate_baud() * 1e6 # microseconds
+        for i in range(1, len(self.edges)):
+            pulse_length = self.edges[i][1] - self.edges[i-1][1]
+            bit = self.edges[i][0]
+            bitstream += [1-bit] * round(pulse_length / t_bit)
+        return bitstream
+
+    def __str__(self):
+        return f"Raw_Received_Packet(edges={len(self.edges)})"
+
+class Processed_Received_Packet(Received_Packet):
+    def __init__(self, payload:bytes, length:int, rssi:int, lqi:int=None, crc_ok:bool=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.payload = payload
         self.length = length
         self.rssi = rssi
@@ -16,10 +52,15 @@ class Received_Packet:
         self.crc_ok = crc_ok
 
     def __str__(self): 
-        return f"Received_Packet(payload={self.payload}, length={self.length}, rssi={self.rssi}, lqi={self.lqi}, crc_ok={self.crc_ok})"
+        return f"Processed_Received_Packet(payload={self.payload}, length={self.length}, rssi={self.rssi}, lqi={self.lqi}, crc_ok={self.crc_ok})"
 
 class Cc1101:
-    def __init__(self, driver):
+    _samples = []
+    _sampling_active = False
+    _packet_start = 0
+    _packet_end = 0
+
+    def __init__(self, driver:Abstract_Driver):
         """Initialize a CC1101 device.
         This method initializes the CC1101 radio device by resetting it and verifying
         its part number and version. It sets up communication with the device and loads
@@ -222,7 +263,7 @@ class Cc1101:
         self.configurator._patable = preset["patable"]
         self.set_configuration()
     
-    def idle(self):
+    def set_idle_mode(self):
         """Sets the CC1101 device to IDLE state.
 
         This state reduces power consumption by stopping all active transmission
@@ -249,6 +290,34 @@ class Cc1101:
         logger.info("Setting device to receive mode")
         self.driver.command_strobe(addresses.SRX)
         time.sleep(0.01)
+
+    def flush_rx_fifo(self):
+        """
+        Flushes the RX FIFO of the CC1101 device.
+
+        This method sends the SFRX command strobe to the CC1101 device, which clears
+        the receive FIFO buffer. It is used to discard any remaining data in the buffer
+        before starting a new reception.
+
+        Returns:
+            None
+        """
+        logger.info("Flushing RX FIFO")
+        self.driver.command_strobe(addresses.SFRX)
+
+    def flush_tx_fifo(self):
+        """
+        Flushes the TX FIFO of the CC1101 device.
+
+        This method sends the SFTX command strobe to the CC1101 device, which clears
+        the transmit FIFO buffer. It is used to discard any remaining data in the buffer
+        before starting a new transmission.
+
+        Returns:
+            None
+        """
+        logger.info("Flushing TX FIFO")
+        self.driver.command_strobe(addresses.SFTX)
 
     def transmit(self, data:bytes, blocking=True):
         """Transmit the data.
@@ -295,12 +364,20 @@ class Cc1101:
                 # End of transmission
                 self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
         
-    def receive(self, blocking=True, timeout_ms=1000):
+    def _recv_trig_callback(self, gpio, level, tick):
+        self._sampling_active = level
+        if level == 1:
+            self._packet_start = time.time()
+        elif level == 0:
+            self._packet_end = time.time()
+
+    def _recv_data_callback(self, gpio, level, tick):
+        if self._sampling_active:
+            self._samples.append((level, tick))
+
+    def receive(self, timeout_ms=1000):
         """Receive data.
-
-        Args:
-            blocking (bool): If True, the function will block until data is received.
-
+        
         Returns:
             bytes: The received data.
         """
@@ -310,42 +387,92 @@ class Cc1101:
             logger.error(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
             raise ValueError(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
         
+        self._samples = []
+        self._sampling_active = False
+        self._packet_start = 0
+        self._packet_end = 0
+
         self.driver.command_strobe(addresses.SRX) # start receiving
-        if blocking:
-            if self.driver.gdo0 is not None:
-                # Start reception
-                if self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, timeout=timeout_ms) is None:
-                    logger.warning("Timeout waiting for start of reception")
-                    return None
-        data = []
-        while (self.driver.read_gdo0() == GPIO.HIGH):
-            trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES)-1)
-            if trunc is not None:
-                data += trunc
-            time.sleep(self.driver.fifo_rw_interval)
-        trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES))
-        data += trunc
-        #self.driver.command_strobe(addresses.SIDLE)
-        
-        length = None
-        rssi = None
-        lqi = None
-        crc_ok = False
+        if self.configurator.get_packet_length_mode() in [0, 1]: # fixed or variable length mode 
+            assert self.configurator.get_GDOx_config(0) == 0x06, "GDO0 must be configured for sync word detection (0x06) in fixed/variable length mode"
+            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for fixed/variable length mode"
+            # Start reception
+            if self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, timeout=timeout_ms) is None:
+                logger.warning("Timeout waiting for start of reception")
+                return None
+            self._packet_start = time.time()
+            data = []
+            while (self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, timeout=self.driver.fifo_rw_interval) is None) and (self.driver.read_gdo0() == GPIO.HIGH):
+                self._packet_end = time.time()
+                trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES)-1)
+                if trunc is not None:
+                    data += trunc
+                #time.sleep(self.driver.fifo_rw_interval)
+            trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES))
+            data += trunc
+            #self.driver.command_strobe(addresses.SIDLE)
+            
+            if self.configurator.get_packet_length_mode() == 0: # fixed length mode
+                length = len(data)
+            else: # variable length mode
+                length = data[0]
+                data = data[1:]
 
-        if self.configurator.get_packet_length_mode() == 0: # fixed length mode
-            length = len(data)
-        elif self.configurator.get_packet_length_mode() == 1: # variable length mode
-            length = data[0]
-            data = data[1:]
+            length = None
+            rssi = None
+            lqi = None
+            crc_ok = False
 
-        if self.configurator.get_append_status_enabled():
-            rssi = data[-2]
-            lqi = data[-1] & 0x7F
-            crc_ok = data[-1] & 0x80 == 0x80
-            data = data[:-2]
-            length -= 2
-        
-        packet = Received_Packet(bytes(data), length, rssi, lqi, crc_ok)
+            if self.configurator.get_append_status_enabled() and (self.configurator.get_packet_length_mode() in [0, 1]):
+                rssi = data[-2]
+                lqi = data[-1] & 0x7F
+                crc_ok = data[-1] & 0x80 == 0x80
+                data = data[:-2]
+                length -= 2
+
+            packet = Processed_Received_Packet(
+                payload=bytes(data), 
+                length=length, 
+                rssi=rssi, 
+                lqi=lqi, 
+                crc_ok=crc_ok, 
+                timestamp=self._packet_start, 
+                length_s=self._packet_end-self._packet_start,
+                configurator=self.configurator)
+            
+        else: # infinite length mode
+            assert self.configurator.get_GDOx_config(0) == 0x0E, "GDO0 must be configured for carrier sense (0x0E) in infinite length mode"
+            assert self.configurator.get_GDOx_config(2) == 0x0D, "GDO2 must be configured for serial data output (0x0D) in infinite length mode"
+            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
+            assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for infinite length mode"
+            
+            pi = pigpio.pi()
+            pi.set_mode(self.driver.gdo0, pigpio.INPUT)
+            pi.set_mode(self.driver.gdo2, pigpio.INPUT)
+            pi.set_pull_up_down(self.driver.gdo0, pigpio.PUD_OFF)
+            pi.set_pull_up_down(self.driver.gdo2, pigpio.PUD_OFF)
+
+            cb_trig = pi.callback(self.driver.gdo0, pigpio.EITHER_EDGE, self._recv_trig_callback)
+            cb_data = pi.callback(self.driver.gdo2, pigpio.EITHER_EDGE, self._recv_data_callback)
+
+            t = time.time()
+            while (self._packet_end == 0) and (time.time()-t < timeout_ms/1000):
+                time.sleep(0.01)
+
+            if self._packet_end == 0:
+                logger.warning("Timeout waiting for end of reception")
+                return None
+            
+            cb_trig.cancel()
+            cb_data.cancel()
+            pi.stop()
+            t0 = self._samples[0][1]
+            packet = Raw_Received_Packet(
+                edges=[(x[0], x[1] - t0) for x in self._samples],
+                timestamp=self._packet_start, 
+                length_s=self._packet_end-self._packet_start,
+                configurator=self.configurator)
+    
         return packet
         
 

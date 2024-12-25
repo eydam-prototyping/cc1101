@@ -17,8 +17,8 @@ Connect two devices, if you want to run all samples. Otherwise you only need one
 | -          | CSN        | GPIO7 (26)   | SPI CE1      |
 | GDO0       | -          | GPIO23 (16)  | RX/TX Done   |
 | -          | GDO0       | GPIO24 (18)  | RX/TX Done   |
-| GDO2       | -          | -            | -            |
-| -          | GDO2       | -            | -            |
+| GDO2       | -          | GPIO17 (11)  | -            |
+| -          | GDO2       | GPIO18 (12)  | -            |
 
 
 ## Usage
