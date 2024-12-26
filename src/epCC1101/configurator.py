@@ -545,6 +545,7 @@ class Cc1101Configurator:
         Args:
             channel (int): Channel number
         """
+        assert 0 <= channel <= 255, f"Invalid channel number: {channel}. Must be between 0 and 255"
         self._registers[addr.CHANNR] = channel
 
     def get_packet_format(self):
@@ -690,6 +691,7 @@ class Cc1101Configurator:
         Args:
             priority ([type]): AGC LNA priority
         """
+        assert 0 <= priority <= 1, f"Invalid AGC LNA priority: {priority}. Must be 0 or 1"
         self._registers[addr.AGCCTRL1] = (self._registers[addr.AGCCTRL1] & 0xBF) | (priority << 6)
 
     def get_agc_magn_target(self):
@@ -758,6 +760,8 @@ class Cc1101Configurator:
         Args:
             patable ([int]): PATABLE values
         """
+        assert 1 <= len(patable) <= 8, f"Invalid PATABLE length: {len(patable)}. Must be between 1 and 8"
+        assert all(0 <= value <= 0xFF for value in patable), f"Invalid PATABLE values: {patable}. Must be between 0 and 0xFF"
         self._patable = patable
     
 
