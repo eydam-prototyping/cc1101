@@ -1,8 +1,17 @@
-import spidev
+
 import logging
 import epCC1101.addresses as addresses
 from epCC1101.driver import Abstract_Driver
-import RPi.GPIO as GPIO
+import sys
+if sys.implementation.name == "cpython":
+    if sys.platform == "linux":
+        import RPi.GPIO as GPIO
+        import pigpio
+        import spidev
+    if sys.platform.startswith("win"):
+        from stubs import GPIO
+        from stubs import pigpio
+        from stubs import spidev
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

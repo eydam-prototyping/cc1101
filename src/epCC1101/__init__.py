@@ -7,8 +7,5 @@ if sys.implementation.name == "micropython":
 elif sys.implementation.name == "cpython":
     if sys.platform == "linux":
         from .rpi_driver import Driver
-        #from epCC1101.rpi_driver import Driver
     if sys.platform.startswith("win"):
-        pass
-        #from .windows_driver import Driver
-        #from epCC1101.windows_driver import Driver
+        from .driver import Abstract_Driver as Driver
