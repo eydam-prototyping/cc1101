@@ -1,5 +1,6 @@
 /jupyter
 /examples/kia_ev6
+/KiCad/CC1101_RPi/CC1101_RPi-backups
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
