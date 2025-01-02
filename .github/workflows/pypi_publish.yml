@@ -58,6 +58,8 @@ jobs:
           - runner: ubuntu-22.04
             target: ppc64le
     steps:
+      - run: |
+          cd src/rust_rpi_cc1101_driver
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -68,7 +70,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: 'true'
-          manylinux: auto
+          manylinux: auto        
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -78,6 +80,8 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
+      - run: |
+          cd src/rust_rpi_cc1101_driver
       - uses: actions/checkout@v4
       - name: Build sdist
         uses: PyO3/maturin-action@v1
