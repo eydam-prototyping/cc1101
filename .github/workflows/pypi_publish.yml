@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  release-build:
+  release-build-epCC1101:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,22 +26,74 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Build release distributions
+      - name: Build release distributions epCC1101
         run: |
           # NOTE: put your own distribution build steps here.
+          cd src/epCC1101
           python -m pip install build
           python -m build
-
+    
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
           path: dist/
 
+  release-build-rust-rpi-cc1101-driver:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-22.04
+            target: x86_64
+          - runner: ubuntu-22.04
+            target: x86
+          - runner: ubuntu-22.04
+            target: aarch64
+          - runner: ubuntu-22.04
+            target: armv7
+          - runner: ubuntu-22.04
+            target: s390x
+          - runner: ubuntu-22.04
+            target: ppc64le
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --find-interpreter
+          sccache: 'true'
+          manylinux: auto
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.platform.target }}
+          path: dist/
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist/
+
   pypi-publish:
     runs-on: ubuntu-latest
     needs:
-      - release-build
+      - release-build-epCC1101
+      - release-build-rust-rpi-cc1101-driver
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
