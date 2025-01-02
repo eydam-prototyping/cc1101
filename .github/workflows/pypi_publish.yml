@@ -38,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: src/epCC1101/dist/
 
   release-build-rust-rpi-cc1101-driver:
     runs-on: ${{ matrix.platform.runner }}
@@ -91,8 +91,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-sdist
-          path: dist/
-          working-directory: src/rust_rpi_cc1101_driver
+          path: src/rust_rpi_cc1101_driver/dist/
 
   pypi-publish:
     runs-on: ubuntu-latest
