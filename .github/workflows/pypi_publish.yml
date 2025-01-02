@@ -59,12 +59,9 @@ jobs:
             target: ppc64le
     steps:
       - uses: actions/checkout@v4
-        with:
-          working-directory: src/rust_rpi_cc1101_driver
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-          working-directory: src/rust_rpi_cc1101_driver
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -118,13 +115,24 @@ jobs:
       # url: https://pypi.org/project/YOURPROJECT/${{ github.event.release.name }}
 
     steps:
-      - name: Retrieve release distributions
+      - name: Retrieve epCC1101 release distributions
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: src/epCC1101/dist/
 
-      - name: Publish release distributions to PyPI
+      - name: Publish epCC1101 release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
+          packages-dir: src/epCC1101/dist/
+
+      - name: Retrieve rust_rpi_cc1101_driver release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-dists
+          path: src/rust_rpi_cc1101_driver/dist/
+
+      - name: Publish rust_rpi_cc1101_driver release distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: src/rust_rpi_cc1101_driver/dist/
