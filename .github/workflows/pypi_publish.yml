@@ -41,6 +41,9 @@ jobs:
           path: dist/
 
   release-build-rust-rpi-cc1101-driver:
+    defaults:
+      run:
+        working-directory: src/rust_rpi_cc1101_driver
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
@@ -58,9 +61,6 @@ jobs:
           - runner: ubuntu-22.04
             target: ppc64le
     steps:
-      - run: |
-          ls
-          cd ./src/rust_rpi_cc1101_driver
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -81,14 +81,13 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          cd src/rust_rpi_cc1101_driver
       - uses: actions/checkout@v4
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
-          args: --out dist
+          args: --out dist 
+        
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
