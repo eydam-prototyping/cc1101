@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "src/rust_RPi_cc1101_driver/Cargo.toml"
+    ]
+}

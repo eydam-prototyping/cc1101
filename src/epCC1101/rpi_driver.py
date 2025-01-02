@@ -2,6 +2,7 @@
 import logging
 import epCC1101.addresses as addresses
 from epCC1101.driver import Abstract_Driver
+from rust_rpi_cc1101_driver import serial_read
 import sys
 if sys.implementation.name == "cpython":
     if sys.platform == "linux":
@@ -10,13 +11,11 @@ if sys.implementation.name == "cpython":
         import spidev
     if sys.platform.startswith("win"):
         from stubs import GPIO
-        from stubs import pigpio
+        from stubs import pigpiod
         from stubs import spidev
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-    
 
 class Driver(Abstract_Driver):
     chunk_size = 32
@@ -35,9 +34,7 @@ class Driver(Abstract_Driver):
         self.spi.open(self.spi_bus, self.cs_pin)
         self.spi.max_speed_hz = self.spi_speed_hz
 
-        if self.gdo0 is not None:
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.gdo0, GPIO.IN)
+        #
 
     def read_byte(self, register:int):
         logger.debug(f"Reading byte from address 0x{register:02X}")
@@ -66,10 +63,35 @@ class Driver(Abstract_Driver):
         self.spi.xfer2([register | addresses.SPI_WRITE_BURST_MASK] + data)
 
     def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
-        return GPIO.wait_for_edge(pin, edge, timeout=timeout)
+        if self.gdo0 is not None:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(pin, GPIO.IN)
         
+        result = GPIO.wait_for_edge(pin, edge, timeout=timeout)
+        
+        if self.gdo0 is not None:
+            GPIO.cleanup()
+        return result
+
     def read_gdo0(self):
-        return GPIO.input(self.gdo0)
+        if self.gdo0 is not None:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.gdo0, GPIO.IN)
+            result = GPIO.input(self.gdo0)
+            GPIO.cleanup()
+            return result
+        else:
+            return None
         
     def read_gdo2(self):
-        return GPIO.input(self.gdo2)
+        if self.gdo2 is not None:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.gdo2, GPIO.IN)
+            result = GPIO.input(self.gdo2)
+            GPIO.cleanup()
+            return result
+        else:
+            return None
+    
+    def serial_read(self, gdo0:int, gdo2:int, timeout_ms:int):
+        return serial_read(gdo0, gdo2, timeout_ms)

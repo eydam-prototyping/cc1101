@@ -32,7 +32,7 @@ class Raw_Received_Packet(Received_Packet):
 
     def get_bitstream(self):
         bitstream = []
-        t_bit = 1/self.configurator.get_data_rate_baud() * 1e6 # microseconds
+        t_bit = 1/self.configurator.get_data_rate_baud()
         for i in range(1, len(self.edges)):
             pulse_length = self.edges[i][1] - self.edges[i-1][1]
             bit = self.edges[i][0]
@@ -356,10 +356,6 @@ class Cc1101:
             
         
         if blocking:
-            #if self.driver.gdo0 is not None:
-            #    # Start transmission
-            #    self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, 1000)
-
             if self.driver.gdo0 is not None:
                 # End of transmission
                 self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
@@ -446,31 +442,16 @@ class Cc1101:
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
             assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for infinite length mode"
             
-            pi = pigpio.pi()
-            pi.set_mode(self.driver.gdo0, pigpio.INPUT)
-            pi.set_mode(self.driver.gdo2, pigpio.INPUT)
-            pi.set_pull_up_down(self.driver.gdo0, pigpio.PUD_OFF)
-            pi.set_pull_up_down(self.driver.gdo2, pigpio.PUD_OFF)
+            raw = self.driver.serial_read(
+                self.driver.gdo0,
+                self.driver.gdo2,
+                timeout_ms=timeout_ms,
+            )
 
-            cb_trig = pi.callback(self.driver.gdo0, pigpio.EITHER_EDGE, self._recv_trig_callback)
-            cb_data = pi.callback(self.driver.gdo2, pigpio.EITHER_EDGE, self._recv_data_callback)
-
-            t = time.time()
-            while (self._packet_end == 0) and (time.time()-t < timeout_ms/1000):
-                time.sleep(0.01)
-
-            if self._packet_end == 0:
-                logger.warning("Timeout waiting for end of reception")
-                return None
-            
-            cb_trig.cancel()
-            cb_data.cancel()
-            pi.stop()
-            t0 = self._samples[0][1]
             packet = Raw_Received_Packet(
-                edges=[(x[0], x[1] - t0) for x in self._samples],
-                timestamp=self._packet_start, 
-                length_s=self._packet_end-self._packet_start,
+                edges=[(x[1], x[0] - raw.start_capture) for x in raw.transitions],
+                timestamp=raw.start_capture, 
+                length_s=raw.end_capture - raw.start_capture,
                 configurator=self.configurator)
     
         return packet
