@@ -39,3 +39,7 @@ class Abstract_Driver:
     @abstractmethod
     def read_gdo2(self):
         return 0
+    
+    @abstractmethod
+    def serial_read(self, gdo0:int, gdo2:int, timeout_ms:int):
+        return []
