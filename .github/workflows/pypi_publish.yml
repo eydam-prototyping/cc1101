@@ -59,7 +59,8 @@ jobs:
             target: ppc64le
     steps:
       - run: |
-          cd src/rust_rpi_cc1101_driver
+          ls
+          cd ./src/rust_rpi_cc1101_driver
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
