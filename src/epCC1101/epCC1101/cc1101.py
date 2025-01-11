@@ -388,7 +388,8 @@ class Cc1101:
         elif packet_format == 3:  # asynchronous serial mode
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for asynchronous serial mode"
             self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in data])
-            self.set_idle_mode()
+        
+        self.set_idle_mode()
 
     def receive(self, timeout_ms=1000):
         """Receive data.

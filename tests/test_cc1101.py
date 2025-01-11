@@ -2,12 +2,12 @@ import unittest
 import sys
 import os
 sys.path.append(os.path.abspath('src/epCC1101'))
-
 from epCC1101 import Driver, Cc1101, addresses as addr
+import time
 
 class TestCc1101(unittest.TestCase):
     def setUp(self):
-        self.driver = Driver(spi_bus=0, cs_pin=0)
+        self.driver = Driver(spi_bus=0, cs_pin=1, gdo0=22, gdo2=23)
         self.cc1101 = Cc1101(driver=self.driver)
         self.cc1101.reset()
     
@@ -113,15 +113,19 @@ class TestCc1101(unittest.TestCase):
     def test_transmit_fixed_length_mode_non_blocking_pass(self):
         self.cc1101.configurator.set_packet_length_mode(0)
         self.cc1101.configurator.set_packet_length(10)
+        self.cc1101.configurator.set_data_rate_baud(5700)
         self.cc1101.set_configuration()
         self.cc1101.transmit(data=bytes([0x00 for _ in range(10)]), blocking=False)
+        time.sleep(0.1)
         self.assertEqual(self.cc1101.get_marc_state(), addr.MARCSTATE_IDLE)
 
     def test_transmit_fixed_length_mode_blocking_pass(self):
         self.cc1101.configurator.set_packet_length_mode(0)
         self.cc1101.configurator.set_packet_length(10)
+        self.cc1101.configurator.set_data_rate_baud(5700)
         self.cc1101.set_configuration()
         self.cc1101.transmit(data=bytes([0x00 for _ in range(10)]), blocking=True)
+        time.sleep(0.1)
         self.assertEqual(self.cc1101.get_marc_state(), addr.MARCSTATE_IDLE)
 
     def test_transmit_fixed_length_mode_non_blocking_fail_1(self):
@@ -143,22 +147,28 @@ class TestCc1101(unittest.TestCase):
     def test_transmit_fixed_length_mode_non_blocking_pass_1(self):
         self.cc1101.configurator.set_packet_length_mode(1)
         self.cc1101.configurator.set_packet_length(10)
+        self.cc1101.configurator.set_data_rate_baud(5700)
         self.cc1101.set_configuration()
         self.cc1101.transmit(data=bytes([0x00 for _ in range(10)]), blocking=False)
+        time.sleep(0.1)
         self.assertEqual(self.cc1101.get_marc_state(), addr.MARCSTATE_IDLE)
 
     def test_transmit_fixed_length_mode_non_blocking_pass_2(self):
         self.cc1101.configurator.set_packet_length_mode(1)
         self.cc1101.configurator.set_packet_length(10)
+        self.cc1101.configurator.set_data_rate_baud(5700)
         self.cc1101.set_configuration()
         self.cc1101.transmit(data=bytes([0x00 for _ in range(9)]), blocking=False)
+        time.sleep(0.1)
         self.assertEqual(self.cc1101.get_marc_state(), addr.MARCSTATE_IDLE)
 
     def test_transmit_fixed_length_mode_blocking_pass(self):
         self.cc1101.configurator.set_packet_length_mode(1)
         self.cc1101.configurator.set_packet_length(10)
+        self.cc1101.configurator.set_data_rate_baud(5700)
         self.cc1101.set_configuration()
         self.cc1101.transmit(data=bytes([0x00 for _ in range(10)]), blocking=True)
+        time.sleep(0.1)
         self.assertEqual(self.cc1101.get_marc_state(), addr.MARCSTATE_IDLE)
 
     def test_transmit_fixed_length_mode_non_blocking_fail(self):

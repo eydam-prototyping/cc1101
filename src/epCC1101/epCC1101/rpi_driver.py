@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 class Driver(Abstract_Driver):
     chunk_size = 32
-    fifo_rw_interval = 0.01
+    fifo_rw_interval = 0.001
     def __init__(self, spi_bus:int=0, cs_pin:int=0, spi_speed_hz:int=55700, gdo0:int=23, gdo1:int=None, gdo2:int=None):
         logger.info(f"Initializing SPI device on bus {spi_bus}, cs_pin {cs_pin}, spi_speed_hz {spi_speed_hz}")
 
