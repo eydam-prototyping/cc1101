@@ -1,5 +1,6 @@
 import unittest
-
+import sys
+sys.path.append('src')
 
 from epCC1101 import Driver, Cc1101
 

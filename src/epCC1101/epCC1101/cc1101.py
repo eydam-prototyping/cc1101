@@ -1,7 +1,7 @@
 import sys
 import epCC1101.addresses as addresses
 from epCC1101.configurator import Cc1101Configurator
-from epCC1101.rpi_driver import Abstract_Driver
+from epCC1101.driver import Abstract_Driver
 import logging
 
 if sys.implementation.name == "micropython":
@@ -11,8 +11,8 @@ elif sys.implementation.name == "cpython":
         import RPi.GPIO as GPIO
         import pigpio
     if sys.platform.startswith("win"):
-        from stubs import GPIO
-        from stubs import pigpio
+        from epCC1101.stubs import GPIO
+        from epCC1101.stubs import pigpio
 
 import time
 
