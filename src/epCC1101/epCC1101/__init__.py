@@ -8,4 +8,4 @@ elif sys.implementation.name == "cpython":
     if sys.platform == "linux":
         from .rpi_driver import Driver
     if sys.platform.startswith("win"):
-        from .driver import Abstract_Driver as Driver
+        from .stubs.driver import Driver

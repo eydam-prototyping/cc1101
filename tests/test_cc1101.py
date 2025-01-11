@@ -1,6 +1,7 @@
 import unittest
 import sys
-sys.path.append('src')
+import os
+sys.path.append(os.path.abspath('src/epCC1101'))
 
 from epCC1101 import Driver, Cc1101
 
