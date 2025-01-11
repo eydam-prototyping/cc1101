@@ -1,4 +1,7 @@
 import unittest
+import sys
+import os
+sys.path.append(os.path.abspath('src/epCC1101'))
 from epCC1101 import presets
 from epCC1101.configurator import Cc1101Configurator
 import epCC1101.addresses as addr
