@@ -1,5 +1,8 @@
 {
     "rust-analyzer.linkedProjects": [
         "src/rust_RPi_cc1101_driver/Cargo.toml"
+    ],
+    "python.analysis.extraPaths": [
+        "./src/epCC1101"
     ]
 }
