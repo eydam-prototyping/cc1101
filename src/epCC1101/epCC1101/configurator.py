@@ -26,7 +26,7 @@ class Cc1101Configurator:
         drate_e = self._registers[addr.MDMCFG4] & 0x0F
         drate_m = self._registers[addr.MDMCFG3] & 0xFF
         
-        return round((256 + drate_m) * (self._fosc / 2**28) * 2**drate_e)
+        return int(round((256 + drate_m) * (self._fosc / 2**28) * 2**drate_e))
         
     def set_data_rate_baud(self, drate_baud: int):
         """see 12 Data Rate Programming
@@ -764,6 +764,9 @@ class Cc1101Configurator:
         assert all(0 <= value <= 0xFF for value in patable), f"Invalid PATABLE values: {patable}. Must be between 0 and 0xFF"
         self._patable = patable
     
+    def print_registers(self):
+        for i, value in enumerate(self._registers):
+            logger.info(f"{i:02X}: {value:02X}")
 
     def print_description(self):
         logger.info(f"12   Data rate: {self.get_data_rate_baud()/1e3:.3f} kbps")

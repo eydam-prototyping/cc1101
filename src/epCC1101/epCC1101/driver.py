@@ -1,5 +1,5 @@
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 class Abstract_Driver:
     gdo0 = None
     gdo2 = None
@@ -41,5 +41,13 @@ class Abstract_Driver:
         return 0
     
     @abstractmethod
-    def serial_read(self, gdo0:int, gdo2:int, timeout_ms:int):
+    def asynchronous_serial_read(self, threshold_pin_number:int, data_pin_number:int, timeout_ms:int):
+        return []
+    
+    @abstractmethod
+    def asynchronous_serial_write(self, data_pin_number:int, baudrate:int, data):
+        return []
+    
+    @abstractmethod
+    def synchronous_serial_write(self, clock_pin_number:int, data_pin_number:int, data):
         return []

@@ -341,19 +341,28 @@ class Cc1101:
                 logger.error(f"Data length {len(data)} exceeds the maximum packet length {expected_packet_length}")
                 raise ValueError(f"Data length {len(data)} exceeds the maximum packet length {expected_packet_length}")
             data = bytes([len(data)]) + data
-
+            
         marc_state = self.get_marc_state()
         if marc_state != addresses.MARCSTATE_IDLE:
             logger.error(f"Device must be in state IDLE(0x01) before transmitting. Current state: 0x{marc_state:02X}")
             raise ValueError(f"Device must be in state IDLE(0x01) before transmitting. Current state: 0x{marc_state:02X}")
         
+        
         self.driver.command_strobe(addresses.SFTX) # flush the TX FIFO
         self.driver.command_strobe(addresses.STX) # start transmitting
-        for i in range(0, len(data)//self.driver.chunk_size + 1):
-            while self.driver.read_status_register(addresses.TXBYTES) > 55-self.driver.chunk_size:
-                time.sleep(self.driver.fifo_rw_interval)
-            self.driver.write_burst(addresses.TXFIFO, list(data[self.driver.chunk_size*i: min(self.driver.chunk_size*(i+1), len(data))])) # write the data to the TX FIFO
-            
+        if packet_length_mode in [0, 1]:
+            for i in range(0, len(data)//self.driver.chunk_size + 1):
+                while self.driver.read_status_register(addresses.TXBYTES) > 55-self.driver.chunk_size:
+                    time.sleep(self.driver.fifo_rw_interval)
+                self.driver.write_burst(addresses.TXFIFO, list(data[self.driver.chunk_size*i: min(self.driver.chunk_size*(i+1), len(data))])) # write the data to the TX FIFO
+        elif packet_length_mode == 2:
+            logger.info("asynchronous serial write")
+            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for asynchronous serial mode"
+            logger.info("baudrate: " + str(self.configurator.get_data_rate_baud()))
+            logger.info("data: " + str([i for i in data]))
+            logger.info("gdo0: " + str(self.driver.gdo0))
+            self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in data])
+            self.set_idle_mode()
         
         if blocking:
             if self.driver.gdo0 is not None:
@@ -379,16 +388,18 @@ class Cc1101:
         """
         logger.info("Receiving data")
         marc_state = self.get_marc_state()
-        if marc_state != addresses.MARCSTATE_IDLE:
-            logger.error(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
-            raise ValueError(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
-        
         self._samples = []
         self._sampling_active = False
         self._packet_start = 0
         self._packet_end = 0
 
-        self.driver.command_strobe(addresses.SRX) # start receiving
+        if marc_state not in [addresses.MARCSTATE_IDLE, addresses.MARCSTATE_RX]:
+            logger.error(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
+            raise ValueError(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
+        
+        if marc_state != addresses.MARCSTATE_RX:
+           self.driver.command_strobe(addresses.SRX) # start receiving
+    
         if self.configurator.get_packet_length_mode() in [0, 1]: # fixed or variable length mode 
             assert self.configurator.get_GDOx_config(0) == 0x06, "GDO0 must be configured for sync word detection (0x06) in fixed/variable length mode"
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for fixed/variable length mode"
@@ -403,21 +414,21 @@ class Cc1101:
                 trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES)-1)
                 if trunc is not None:
                     data += trunc
-                #time.sleep(self.driver.fifo_rw_interval)
             trunc = self.driver.read_burst(addresses.RXFIFO, self.driver.read_status_register(addresses.RXBYTES))
             data += trunc
-            #self.driver.command_strobe(addresses.SIDLE)
+
+            print("data: " + str(data))
+
+            length = None
+            rssi = None
+            lqi = None
+            crc_ok = False
             
             if self.configurator.get_packet_length_mode() == 0: # fixed length mode
                 length = len(data)
             else: # variable length mode
                 length = data[0]
                 data = data[1:]
-
-            length = None
-            rssi = None
-            lqi = None
-            crc_ok = False
 
             if self.configurator.get_append_status_enabled() and (self.configurator.get_packet_length_mode() in [0, 1]):
                 rssi = data[-2]
@@ -442,7 +453,7 @@ class Cc1101:
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
             assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for infinite length mode"
             
-            raw = self.driver.serial_read(
+            raw = self.driver.asynchronous_serial_read(
                 self.driver.gdo0,
                 self.driver.gdo2,
                 timeout_ms=timeout_ms,
@@ -454,6 +465,7 @@ class Cc1101:
                 length_s=raw.end_capture - raw.start_capture,
                 configurator=self.configurator)
     
+        self.set_idle_mode()
         return packet
         
 

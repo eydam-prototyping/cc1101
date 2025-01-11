@@ -9,7 +9,7 @@ setup(
     author="Tobias Eydam",
     author_email="eydam-prototyping@outlook.com",
     url="https://github.com/eydam-prototyping/cc1101",
-    packages=find_packages(),
+    packages=find_packages(where='.'),
     install_requires=[
         "lgpio==0.2.2.0",
         "rpi-lgpio==0.6",

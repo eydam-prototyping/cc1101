@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{str::Bytes, time::{Duration, SystemTime, UNIX_EPOCH}};
 use rppal::gpio::{Gpio, Level, Trigger};
 
 pub const TRIGGER_DISABLED: u8 = 0;
@@ -73,9 +73,9 @@ fn wait_for_interrupt(pin_number: u8, timeout_ms: u64, direction: u8) -> PyResul
 }
 
 #[pyfunction]
-fn serial_read(gdo0: u8, gdo2:u8, timeout_ms: u64) -> PyResult<Option<CapturedTransitions>> {
+fn asynchronous_serial_read(threshold_pin_number: u8, data_pin_number:u8, timeout_ms: u64) -> PyResult<Option<CapturedTransitions>> {
     // Wait for the rising edge on GDO0
-    let rising_edge = wait_for_interrupt(gdo0, timeout_ms, TRIGGER_RISING_EDGE)?;
+    let rising_edge = wait_for_interrupt(threshold_pin_number, timeout_ms, TRIGGER_RISING_EDGE)?;
     if rising_edge.is_none() {
         return Ok(None); // Timeout
     }
@@ -86,7 +86,7 @@ fn serial_read(gdo0: u8, gdo2:u8, timeout_ms: u64) -> PyResult<Option<CapturedTr
     let mut transitions: Vec<(f64, u8)> = Vec::new();
     let gdo0_pin = Gpio::new()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-        .get(gdo0)
+        .get(threshold_pin_number)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
         .into_input();
 
@@ -94,7 +94,7 @@ fn serial_read(gdo0: u8, gdo2:u8, timeout_ms: u64) -> PyResult<Option<CapturedTr
         if gdo0_pin.is_low(){
             break;
         }
-        let signal_edge = wait_for_interrupt(gdo2, timeout_ms, TRIGGER_BOTH_EDGES)?;
+        let signal_edge = wait_for_interrupt(data_pin_number, timeout_ms, TRIGGER_BOTH_EDGES)?;
         if signal_edge.is_none(){
             return Ok(None); // Timeout
         }
@@ -111,9 +111,69 @@ fn serial_read(gdo0: u8, gdo2:u8, timeout_ms: u64) -> PyResult<Option<CapturedTr
     
 }
 
+#[pyfunction]
+fn asynchronous_serial_write(data_pin_number:u8, baudrate:u32, data:Vec<u8>) -> PyResult<Option<()>> {
+    let gpio = Gpio::new()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    
+    let pin = gpio.get(data_pin_number)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    let mut data_pin = pin.into_output();
+
+    let bit_time = 1.0 / baudrate as f64;
+    for byte in data{
+        for i in 0..8{
+            // Write the bit to the data pin
+            let bit = (byte >> i) & 1;
+            // Wait for the bit time
+            std::thread::sleep(Duration::from_secs_f64(bit_time));
+            // Write the bit to the data pin
+            match bit{
+                0 => data_pin.set_low(),
+                1 => data_pin.set_high(),
+                _ => return Err(PyRuntimeError::new_err("Invalid bit value.")),
+            };
+        }
+    }
+    Ok(Some(()))
+}
+
+#[pyfunction]
+fn synchronous_serial_write(clock_pin_number: u8, data_pin_number:u8, data:Vec<u8>) -> PyResult<Option<()>> {
+    let gpio = Gpio::new()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    
+    let pin = gpio.get(data_pin_number)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    let mut data_pin = pin.into_output();
+
+    for byte in data{
+        for i in 0..8{
+            // Write the bit to the data pin
+            let bit = (byte >> i) & 1;
+            // Wait for the clock to go low
+            wait_for_interrupt(clock_pin_number, 1000, TRIGGER_FALLING_EDGE)?;
+            // Write the bit to the data pin
+            match bit{
+                0 => data_pin.set_low(),
+                1 => data_pin.set_high(),
+                _ => return Err(PyRuntimeError::new_err("Invalid bit value.")),
+            };
+            // Wait for the clock to go high
+            wait_for_interrupt(clock_pin_number, 1000, TRIGGER_RISING_EDGE)?;
+        }
+    }
+    Ok(Some(()))
+}
+
+
 #[pymodule]
 fn rust_rpi_cc1101_driver(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(serial_read, m)?)?;
+    m.add_function(wrap_pyfunction!(asynchronous_serial_read, m)?)?;
+    m.add_function(wrap_pyfunction!(asynchronous_serial_write, m)?)?;
+    m.add_function(wrap_pyfunction!(synchronous_serial_write, m)?)?;
     m.add_function(wrap_pyfunction!(wait_for_interrupt, m)?)?;
 
     m.add("TRIGGER_DISABLED", TRIGGER_DISABLED)?;
