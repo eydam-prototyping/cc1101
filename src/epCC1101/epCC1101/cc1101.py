@@ -291,6 +291,21 @@ class Cc1101:
         self.driver.command_strobe(addresses.SRX)
         time.sleep(0.01)
 
+    def set_transmit_mode(self):
+        """
+        Sets the CC1101 device to transmit mode by sending the STX strobe command.
+
+        The method sends the STX (TX enable) command strobe to the CC1101 device,
+        which switches it to transmit mode. After sending the command, it waits for
+        10ms to ensure the mode change is complete.
+
+        Returns:
+            None
+        """
+        logger.info("Setting device to transmit mode")
+        self.driver.command_strobe(addresses.STX)
+        time.sleep(0.01)
+
     def flush_rx_fifo(self):
         """
         Flushes the RX FIFO of the CC1101 device.
@@ -319,6 +334,13 @@ class Cc1101:
         logger.info("Flushing TX FIFO")
         self.driver.command_strobe(addresses.SFTX)
 
+    def _write_data_to_tx_fifo(self, data:bytes):
+        for i in range(0, len(data)//self.driver.chunk_size + 1):
+            while self.driver.read_status_register(addresses.TXBYTES) > 55-self.driver.chunk_size:
+                time.sleep(self.driver.fifo_rw_interval)
+            self.driver.write_burst(addresses.TXFIFO, list(data[self.driver.chunk_size*i: min(self.driver.chunk_size*(i+1), len(data))])) # write the data to the TX FIFO
+        
+
     def transmit(self, data:bytes, blocking=True):
         """Transmit the data.
 
@@ -330,8 +352,11 @@ class Cc1101:
             blocking (bool): If True, the function will block until the transmission is complete.
         """
         logger.info(f"Transmitting data {data}")
+
         packet_length_mode = self.configurator.get_packet_length_mode()
         expected_packet_length = self.configurator.get_packet_length()
+        packet_format = self.configurator.get_packet_format()
+
         if packet_length_mode == 0: # fixed length mode
             if len(data) != expected_packet_length:
                 logger.error(f"Data length {len(data)} does not match expected length {expected_packet_length}")
@@ -347,38 +372,23 @@ class Cc1101:
             logger.error(f"Device must be in state IDLE(0x01) before transmitting. Current state: 0x{marc_state:02X}")
             raise ValueError(f"Device must be in state IDLE(0x01) before transmitting. Current state: 0x{marc_state:02X}")
         
+        self.flush_tx_fifo()
+        self.set_transmit_mode()
         
-        self.driver.command_strobe(addresses.SFTX) # flush the TX FIFO
-        self.driver.command_strobe(addresses.STX) # start transmitting
-        if packet_length_mode in [0, 1]:
-            for i in range(0, len(data)//self.driver.chunk_size + 1):
-                while self.driver.read_status_register(addresses.TXBYTES) > 55-self.driver.chunk_size:
-                    time.sleep(self.driver.fifo_rw_interval)
-                self.driver.write_burst(addresses.TXFIFO, list(data[self.driver.chunk_size*i: min(self.driver.chunk_size*(i+1), len(data))])) # write the data to the TX FIFO
-        elif packet_length_mode == 2:
-            logger.info("asynchronous serial write")
+        if packet_format == 0:  # normal mode, use the TX FIFO
+            self._write_data_to_tx_fifo(data)
+            if blocking:
+                if self.driver.gdo0 is not None:
+                    # End of transmission
+                    self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
+        elif packet_format == 1:  # synchronous serial mode
+            pass
+        elif packet_format == 2:  # random mode
+            pass
+        elif packet_format == 3:  # asynchronous serial mode
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for asynchronous serial mode"
-            logger.info("baudrate: " + str(self.configurator.get_data_rate_baud()))
-            logger.info("data: " + str([i for i in data]))
-            logger.info("gdo0: " + str(self.driver.gdo0))
             self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in data])
             self.set_idle_mode()
-        
-        if blocking:
-            if self.driver.gdo0 is not None:
-                # End of transmission
-                self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
-        
-    def _recv_trig_callback(self, gpio, level, tick):
-        self._sampling_active = level
-        if level == 1:
-            self._packet_start = time.time()
-        elif level == 0:
-            self._packet_end = time.time()
-
-    def _recv_data_callback(self, gpio, level, tick):
-        if self._sampling_active:
-            self._samples.append((level, tick))
 
     def receive(self, timeout_ms=1000):
         """Receive data.
