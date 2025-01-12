@@ -29,6 +29,14 @@ class Abstract_Driver:
         pass
 
     @abstractmethod
+    def set_pin_mode(self, pin:int, mode:int):
+        pass
+
+    @abstractmethod
+    def reset_pin_mode(self, pin:int):
+        pass
+
+    @abstractmethod
     def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
         pass
 

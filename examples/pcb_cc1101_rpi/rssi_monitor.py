@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 import time
 
 # Create a driver object
-driver = Driver(spi_bus=0, cs_pin=0, gdo0=23)
+driver = Driver(spi_bus=0, cs_pin=0, gdo0=5, gdo2=6)
 
 # Create a CC1101 object
 cc1101 = Cc1101(driver=driver)
@@ -45,6 +45,8 @@ while True:
         time.sleep(update_interval/10)
 
     max_rssi = max(max_rssi, max_rssi_interval)    
-    x = int((max_rssi_interval+120)/12)
-    print(f"RSSI: {max_rssi_interval:>7} dBm "+str(x)+ f" (max: {max_rssi:>7} dBm): {'|'*int((max_rssi_interval+120)/2):<50}", end="\r")
-    bus.write_byte(0x20, (0xFF-(0xFF80>>x))&0xFF)
+    print(f"RSSI: {max_rssi_interval:>7} dBm (max: {max_rssi:>7} dBm): {'|'*int((max_rssi_interval+120)/2):<50}", end="\r")
+    
+    rssi_bar_level = int((max_rssi_interval+120)/5)
+    rssi_bar_level = min(rssi_bar_level, 7)
+    bus.write_byte(0x20, (0xFF-(0xFF80>>rssi_bar_level))&0xFF)

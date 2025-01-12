@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class Driver(Abstract_Driver):
-    chunk_size = 32
-    fifo_rw_interval = 0.001
+    chunk_size = 16
+    fifo_rw_interval = 0.01
     def __init__(self, spi_bus:int=0, cs_pin:int=0, spi_speed_hz:int=55700, gdo0:int=23, gdo1:int=None, gdo2:int=None):
         logger.info(f"Initializing SPI device on bus {spi_bus}, cs_pin {cs_pin}, spi_speed_hz {spi_speed_hz}")
 
@@ -62,36 +62,34 @@ class Driver(Abstract_Driver):
         logger.debug(f"Writing burst to address 0x{register:02X} with data {data}")
         self.spi.xfer2([register | addresses.SPI_WRITE_BURST_MASK] + data)
 
-    def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
-        if self.gdo0 is not None:
+    def set_pin_mode(self, pin:int, mode:int):
+        if sys.platform == "linux":
             GPIO.setmode(GPIO.BCM)
-            GPIO.setup(pin, GPIO.IN)
-        
-        result = GPIO.wait_for_edge(pin, edge, timeout=timeout)
-        
-        if self.gdo0 is not None:
-            GPIO.cleanup()
-        return result
+            GPIO.setup(pin, mode)
+        else:
+            logger.error("set_pin_mode is not supported on this platform")
+
+    def reset_pin_mode(self, pin:int):
+        if sys.platform == "linux":
+            GPIO.cleanup(pin)
+        else:
+            logger.error("reset_pin_mode is not supported on this platform")
+
+    def wait_for_edge(self, pin:int, edge:int, timeout:int=1000):
+        return GPIO.wait_for_edge(pin, edge, timeout=timeout)
 
     def read_gdo0(self):
-        if self.gdo0 is not None:
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.gdo0, GPIO.IN)
-            result = GPIO.input(self.gdo0)
-            GPIO.cleanup()
-            return result
-        else:
-            return None
+            return GPIO.input(self.gdo0)
         
-    def read_gdo2(self):
-        if self.gdo2 is not None:
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.gdo2, GPIO.IN)
-            result = GPIO.input(self.gdo2)
-            GPIO.cleanup()
-            return result
-        else:
-            return None
+    #def read_gdo2(self):
+    #    if self.gdo2 is not None:
+    #        GPIO.setmode(GPIO.BCM)
+    #        GPIO.setup(self.gdo2, GPIO.IN)
+    #        result = GPIO.input(self.gdo2)
+    #        GPIO.cleanup()
+    #        return result
+    #    else:
+    #        return None
     
     def asynchronous_serial_read(self, threshold_pin_number:int, data_pin_number:int, timeout_ms:int):
         return asynchronous_serial_read(threshold_pin_number, data_pin_number, timeout_ms)
