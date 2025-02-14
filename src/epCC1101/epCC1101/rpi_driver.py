@@ -2,7 +2,7 @@
 import logging
 import epCC1101.addresses as addresses
 from epCC1101.driver import Abstract_Driver
-from rust_rpi_cc1101_driver import asynchronous_serial_read, asynchronous_serial_write, synchronous_serial_write
+from rust_rpi_cc1101_driver import asynchronous_serial_read, asynchronous_serial_write, synchronous_serial_write, synchronous_serial_read
 import sys
 if sys.implementation.name == "cpython":
     if sys.platform == "linux":
@@ -97,5 +97,8 @@ class Driver(Abstract_Driver):
     def asynchronous_serial_write(self, data_pin_number:int, baudrate:int, data):
         return asynchronous_serial_write(data_pin_number, baudrate, data)
     
-    def synchronous_serial_write(self, clock_pin_number:int, data_pin_number:int, data):
-        return synchronous_serial_write(clock_pin_number, data_pin_number, data)
+    def synchronous_serial_read(self, clock_pin_number:int, data_pin_number:int, timeout_ms:int, max_same_bits:int=16):
+        return synchronous_serial_read(clock_pin_number, data_pin_number, timeout_ms, max_same_bits)
+
+    def synchronous_serial_write(self, clock_pin_number:int, data_pin_number:int, data, baudrate):
+        return synchronous_serial_write(clock_pin_number, data_pin_number, data, baudrate)

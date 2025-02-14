@@ -385,9 +385,11 @@ class Cc1101:
             if blocking:
                 if self.driver.gdo0 is not None:
                     # End of transmission
+                    self.driver.set_pin_mode(self.driver.gdo0, GPIO.IN)
                     self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
+                    self.driver.reset_pin_mode(self.driver.gdo0)
         elif packet_format == 1:  # synchronous serial mode
-            pass
+            self.driver.synchronous_serial_write(self.driver.gdo2, self.driver.gdo0, [int(i) for i in data], self.configurator.get_data_rate_baud())
         elif packet_format == 2:  # random mode
             pass
         elif packet_format == 3:  # asynchronous serial mode
@@ -418,7 +420,9 @@ class Cc1101:
         if marc_state != addresses.MARCSTATE_RX:
            self.driver.command_strobe(addresses.SRX)
     
-        if self.configurator.get_packet_format == 0: # normal mode, use the RX FIFO
+        packet_format = self.configurator.get_packet_format()
+
+        if packet_format == 0: # normal mode, use the RX FIFO
             assert self.configurator.get_GDOx_config(0) == 0x06, "GDO0 must be configured for sync word detection (0x06) in fixed/variable length mode"
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for fixed/variable length mode"
             # Start reception
@@ -465,11 +469,16 @@ class Cc1101:
                 length_s=self._packet_end-self._packet_start,
                 configurator=self.configurator)
             
-        elif self.configurator.get_packet_format == 1: # synchronous serial mode
-            pass
-        elif self.configurator.get_packet_format == 2: # random mode
-            pass
-        elif self.configurator.get_packet_format == 3: # asynchronous serial mode
+        elif packet_format == 1: # synchronous serial mode
+            time.sleep(0.1)
+            packet = self.driver.synchronous_serial_read(
+                self.driver.gdo0,
+                self.driver.gdo2,
+                timeout_ms=timeout_ms
+            )
+        elif packet_format == 2: # random mode
+            packet = None
+        elif packet_format == 3: # asynchronous serial mode
             assert self.configurator.get_GDOx_config(0) == 0x0E, "GDO0 must be configured for carrier sense (0x0E) in infinite length mode"
             assert self.configurator.get_GDOx_config(2) == 0x0D, "GDO2 must be configured for serial data output (0x0D) in infinite length mode"
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
