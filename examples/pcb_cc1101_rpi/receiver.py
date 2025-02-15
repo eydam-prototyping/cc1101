@@ -41,4 +41,4 @@ for i in range(5):
     logger.info("Waiting for Packet...")
     packet = cc1101.receive(timeout_ms=10000)
     logger.info(packet)
-    logger.info(" ".join([f"{x:02x}" for x in packet.payload]))
+    logger.info(" ".join([f"{x:02x}" for x in packet._payload]))
