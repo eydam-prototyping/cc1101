@@ -2,7 +2,9 @@ import sys
 import epCC1101.addresses as addresses
 from epCC1101.configurator import Cc1101Configurator
 from epCC1101.driver import Abstract_Driver
+from epCC1101.packet import NormalRxPacket, SyncRxPacket, AsyncRxPacket
 import logging
+import time
 
 if sys.implementation.name == "micropython":
     raise NotImplementedError("This library is not compatible with MicroPython")
@@ -14,45 +16,8 @@ elif sys.implementation.name == "cpython":
         from epCC1101.stubs import GPIO
         from epCC1101.stubs import pigpio
 
-import time
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-class Received_Packet:
-    def __init__(self, timestamp:float, length_s:float, configurator:Cc1101Configurator):
-        self.timestamp = timestamp
-        self.length_s = length_s
-        self.configurator = configurator
-
-class Raw_Received_Packet(Received_Packet):
-    def __init__(self, edges:list, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.edges = edges
-
-    def get_bitstream(self):
-        bitstream = []
-        t_bit = 1/self.configurator.get_data_rate_baud()
-        for i in range(1, len(self.edges)):
-            pulse_length = self.edges[i][1] - self.edges[i-1][1]
-            bit = self.edges[i][0]
-            bitstream += [1-bit] * round(pulse_length / t_bit)
-        return bitstream
-
-    def __str__(self):
-        return f"Raw_Received_Packet(edges={len(self.edges)})"
-
-class Processed_Received_Packet(Received_Packet):
-    def __init__(self, payload:bytes, length:int, rssi:int, lqi:int=None, crc_ok:bool=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.payload = payload
-        self.length = length
-        self.rssi = rssi
-        self.lqi = lqi
-        self.crc_ok = crc_ok
-
-    def __str__(self): 
-        return f"Processed_Received_Packet(payload={self.payload}, length={self.length}, rssi={self.rssi}, lqi={self.lqi}, crc_ok={self.crc_ok})"
 
 class Cc1101:
     _samples = []
@@ -459,23 +424,23 @@ class Cc1101:
                 data = data[:-2]
                 length -= 2
 
-            packet = Processed_Received_Packet(
-                payload=bytes(data), 
+
+            return NormalRxPacket(
+                payload=data, 
                 length=length, 
                 rssi=rssi, 
                 lqi=lqi, 
                 crc_ok=crc_ok, 
-                timestamp=self._packet_start, 
-                length_s=self._packet_end-self._packet_start,
-                configurator=self.configurator)
+                timestamp=self._packet_start)
             
         elif packet_format == 1: # synchronous serial mode
             time.sleep(0.1)
-            packet = self.driver.synchronous_serial_read(
-                self.driver.gdo0,
+            bits = self.driver.synchronous_serial_read(
                 self.driver.gdo2,
+                self.driver.gdo0,
                 timeout_ms=timeout_ms
             )
+            packet = SyncRxPacket(bits.bits, timestamp=time.time())
         elif packet_format == 2: # random mode
             packet = None
         elif packet_format == 3: # asynchronous serial mode
@@ -484,18 +449,19 @@ class Cc1101:
             assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
             assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for infinite length mode"
             
-            raw = self.driver.asynchronous_serial_read(
+            edges = self.driver.asynchronous_serial_read(
                 self.driver.gdo0,
                 self.driver.gdo2,
                 timeout_ms=timeout_ms,
             )
 
-            packet = Raw_Received_Packet(
-                edges=[(x[1], x[0] - raw.start_capture) for x in raw.transitions],
-                timestamp=raw.start_capture, 
-                length_s=raw.end_capture - raw.start_capture,
-                configurator=self.configurator)
-    
+            #packet = Raw_Received_Packet(
+            #    edges=[(x[1], x[0] - raw.start_capture) for x in raw.transitions],
+            #    timestamp=raw.start_capture, 
+            #    length_s=raw.end_capture - raw.start_capture,
+            #    configurator=self.configurator)
+            packet = AsyncRxPacket(edges=[(x[1], x[0] - edges.start_capture) for x in edges.transitions], timestamp=time.time())
+
         self.set_idle_mode()
         return packet
         

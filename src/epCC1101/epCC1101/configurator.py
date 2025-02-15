@@ -563,6 +563,17 @@ class Cc1101Configurator:
             packet_format ([int]): Packet format
         """
         assert 0 <= packet_format <= 3, f"Invalid packet format: {packet_format}. Must be between 0 and 3"
+        
+        if packet_format == 0: # Packet mode
+            self.set_GDOx_config(0, 0x06) # Sync word detect
+            # GDO2 don't care
+        elif packet_format == 1: # Sync serial mode
+            self.set_GDOx_config(0, 0x0C) # Serial Synchronous Data Output
+            self.set_GDOx_config(2, 0x0B) # Serial Clock
+        elif packet_format == 3: # Asynchronous serial mode
+            self.set_GDOx_config(0, 0x0E) # Carrier sense
+            self.set_GDOx_config(2, 0x0D) # Serial Asynchronous Data Output
+
         self._registers[addr.PKTCTRL0] = (self._registers[addr.PKTCTRL0] & 0xCF) | (packet_format << 4)
 
     def get_agc_filter_length(self):
