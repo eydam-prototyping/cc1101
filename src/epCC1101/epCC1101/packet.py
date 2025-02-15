@@ -137,7 +137,7 @@ class PT2262_Protocol(Protocol):
 
 class Packet:
     def __init__(self):
-        pass
+        self._payload = []
 
     @property
     def protocol(self) -> Protocol:
@@ -149,10 +149,45 @@ class Packet:
     def protocol(self, value: Protocol):
         self._protocol = value
 
+    @property
+    def payload(self) -> list:
+        """Get or set the payload of the packet.
+        """
+        return self._payload
+    
+    @payload.setter
+    def payload(self, value: list):
+        self._payload = value
+
 
 class TxPacket(Packet):
-    def __init__(self):
-        pass
+    def __init__(self, payload: list):
+        super().__init__()
+        self._payload = payload
+
+
+class NormalTxPacket(TxPacket):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return f"NormalTxPacket(payload={' '.join([f'{x:02x}' for x in self.payload])})"
+
+
+class SyncTxPacket(TxPacket):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def __repr__(self):
+        return f"SyncTxPacket(bits={' '.join([f'{x:02x}' for x in self.payload])})"
+
+
+class AsyncTxPacket(TxPacket):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def __repr__(self):
+        return f"AsyncTxPacket(edges={self.payload})"
 
 
 class RxPacket(Packet):

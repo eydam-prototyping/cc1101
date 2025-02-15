@@ -1,6 +1,7 @@
 import sys
 
 from .cc1101 import Cc1101
+from .packet import *
 
 if sys.implementation.name == "micropython":
     raise NotImplementedError("This library is not compatible with MicroPython")

@@ -1,4 +1,4 @@
-from epCC1101 import Cc1101, Driver, presets
+from epCC1101 import Cc1101, Driver, presets, NormalTxPacket
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -40,5 +40,6 @@ cc1101.configurator.print_description()
 # Transmit some data
 for i in range(5):
     logger.info("Transmitting...")
-    cc1101.transmit(bytes([i for i in range(1, 50)]))
+    packet = NormalTxPacket(payload=[i for i in range(1, 10)])
+    cc1101.transmit(packet)
     time.sleep(1)

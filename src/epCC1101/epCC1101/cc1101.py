@@ -2,7 +2,7 @@ import sys
 import epCC1101.addresses as addresses
 from epCC1101.configurator import Cc1101Configurator
 from epCC1101.driver import Abstract_Driver
-from epCC1101.packet import NormalRxPacket, SyncRxPacket, AsyncRxPacket
+from epCC1101.packet import RxPacket, NormalRxPacket, SyncRxPacket, AsyncRxPacket, TxPacket, SyncTxPacket, AsyncTxPacket, NormalTxPacket
 import logging
 import time
 
@@ -38,7 +38,7 @@ class Cc1101:
         Example:
             >>> from cc1101 import Cc1101
             >>> from rpi_driver import Driver
-            >>> driver = Driver(spi_bus=0, cs_pin=0, gdo0=23)
+            >>> driver = Driver(spi_bus=0, cs_pin=0, gdo0=5, gdo2=6)
             >>> cc1101 = Cc1101(driver)
         """
         logger.info("Initializing CC1101 device")
@@ -311,21 +311,10 @@ class Cc1101:
     def _get_tx_bytes(self):
         return self.driver.read_status_register(addresses.TXBYTES)&0x7F
 
-    def transmit(self, data:bytes, blocking=True):
-        """Transmit the data.
-
-        In variable length mode, the first byte of the TX FIFO must be the length byte. It 
-        will be automatically set by this function.
-
-        Args:
-            data (bytes): The data to transmit.
-            blocking (bool): If True, the function will block until the transmission is complete.
-        """
-        logger.info(f"Transmitting data {data}")
-
+    def _transmit_packet_mode(self, packet:NormalTxPacket):
         packet_length_mode = self.configurator.get_packet_length_mode()
         expected_packet_length = self.configurator.get_packet_length()
-        packet_format = self.configurator.get_packet_format()
+        data = bytes(packet.payload)
 
         if packet_length_mode == 0: # fixed length mode
             if len(data) != expected_packet_length:
@@ -336,6 +325,33 @@ class Cc1101:
                 logger.error(f"Data length {len(data)} exceeds the maximum packet length {expected_packet_length}")
                 raise ValueError(f"Data length {len(data)} exceeds the maximum packet length {expected_packet_length}")
             data = bytes([len(data)]) + data
+
+        self._write_data_to_tx_fifo(data)
+        if self.driver.gdo0 is not None:
+            # End of transmission
+            self.driver.set_pin_mode(self.driver.gdo0, GPIO.IN)
+            self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
+            self.driver.reset_pin_mode(self.driver.gdo0)
+
+    def _transmit_sync_serial_mode(self, packet:SyncTxPacket):
+        self.driver.synchronous_serial_write(self.driver.gdo2, self.driver.gdo0, [int(i) for i in packet.payload], self.configurator.get_data_rate_baud())
+        
+    def _transmit_async_serial_mode(self, packet:AsyncTxPacket):
+        self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in packet.payload])
+
+    def transmit(self, packet:TxPacket):
+        """Transmit the data.
+
+        In variable length mode, the first byte of the TX FIFO must be the length byte. It 
+        will be automatically set by this function.
+
+        Args:
+            data (bytes): The data to transmit.
+            blocking (bool): If True, the function will block until the transmission is complete.
+        """
+        logger.info(f"Transmitting packet {packet}")
+
+        packet_format = self.configurator.get_packet_format()
             
         marc_state = self.get_marc_state()
         if marc_state != addresses.MARCSTATE_IDLE:
@@ -346,24 +362,96 @@ class Cc1101:
         self.set_transmit_mode()
         
         if packet_format == 0:  # normal mode, use the TX FIFO
-            self._write_data_to_tx_fifo(data)
-            if blocking:
-                if self.driver.gdo0 is not None:
-                    # End of transmission
-                    self.driver.set_pin_mode(self.driver.gdo0, GPIO.IN)
-                    self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, 1000)
-                    self.driver.reset_pin_mode(self.driver.gdo0)
+            self._transmit_packet_mode(packet)
+
         elif packet_format == 1:  # synchronous serial mode
-            self.driver.synchronous_serial_write(self.driver.gdo2, self.driver.gdo0, [int(i) for i in data], self.configurator.get_data_rate_baud())
+            self._transmit_sync_serial_mode(packet)
+
         elif packet_format == 2:  # random mode
-            pass
+            raise NotImplementedError("Random mode is not supported")
+        
         elif packet_format == 3:  # asynchronous serial mode
-            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for asynchronous serial mode"
-            self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in data])
+            self._transmit_async_serial_mode(packet) 
         
         self.set_idle_mode()
 
-    def receive(self, timeout_ms=1000):
+
+    def _receive_packet_mode(self, timeout_ms:int) -> NormalRxPacket:
+        assert self.configurator.get_GDOx_config(0) == 0x06, "GDO0 must be configured for sync word detection (0x06) in fixed/variable length mode"
+        assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for fixed/variable length mode"
+        
+        self.driver.set_pin_mode(self.driver.gdo0, GPIO.IN)
+        if self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, timeout=timeout_ms) is None:
+            logger.warning("Timeout waiting for start of reception")
+            return None
+        self._packet_start = time.time()
+        data = []
+        while (self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, timeout=self.driver.fifo_rw_interval) is None) and (self.driver.read_gdo0() == GPIO.HIGH):
+            self._packet_end = time.time()
+            trunc = self.driver.read_burst(addresses.RXFIFO, self._get_rx_bytes()-1)
+            if trunc is not None:
+                data += trunc
+        trunc = self.driver.read_burst(addresses.RXFIFO, self._get_rx_bytes())
+        data += trunc
+        self.driver.reset_pin_mode(self.driver.gdo0)
+
+        length = None
+        rssi = None
+        lqi = None
+        crc_ok = False
+        
+        if self.configurator.get_packet_length_mode() == 0: # fixed length mode
+            length = len(data)
+        else: # variable length mode
+            length = data[0]
+            data = data[1:]
+
+        if self.configurator.get_append_status_enabled() and (self.configurator.get_packet_length_mode() in [0, 1]):
+            rssi = data[-2]
+            lqi = data[-1] & 0x7F
+            crc_ok = data[-1] & 0x80 == 0x80
+            data = data[:-2]
+            #length -= 2
+
+        return NormalRxPacket(
+            payload=data, 
+            length=length, 
+            rssi=rssi, 
+            lqi=lqi, 
+            crc_ok=crc_ok, 
+            timestamp=self._packet_start)
+
+
+    def _receive_sync_serial_mode(self, timeout_ms:int) -> SyncRxPacket:
+        assert self.configurator.get_GDOx_config(0) == 0x0C, "GDO0 must be configured for sync serial data output (0x0C) in synchronous serial mode"
+        assert self.configurator.get_GDOx_config(2) == 0x0B, "GDO2 must be configured for serial clock (0x0B) in synchronous serial mode"
+        assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for synchronous serial mode"
+        assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for synchronous serial mode"
+        time.sleep(0.01)
+        bits = self.driver.synchronous_serial_read(
+            self.driver.gdo2,
+            self.driver.gdo0,
+            timeout_ms=timeout_ms
+        )
+        return SyncRxPacket(bits.bits, timestamp=time.time())
+
+
+    def _receive_async_serial_mode(self, timeout_ms:int) -> AsyncRxPacket:
+        assert self.configurator.get_GDOx_config(0) == 0x0E, "GDO0 must be configured for carrier sense (0x0E) in asynchronous serial mode"
+        assert self.configurator.get_GDOx_config(2) == 0x0D, "GDO2 must be configured for async serial data output (0x0D) in asynchronous serial mode"
+        assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for asynchronous serial mode"
+        assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for asynchronous serial mode"
+        
+        edges = self.driver.asynchronous_serial_read(
+            self.driver.gdo0,
+            self.driver.gdo2,
+            timeout_ms=timeout_ms,
+        )
+
+        return AsyncRxPacket(edges=[(x[1], x[0] - edges.start_capture) for x in edges.transitions], timestamp=time.time())
+
+
+    def receive(self, timeout_ms=1000) -> RxPacket:
         """Receive data.
         
         Returns:
@@ -371,10 +459,6 @@ class Cc1101:
         """
         logger.info("Receiving data")
         marc_state = self.get_marc_state()
-        self._samples = []
-        self._sampling_active = False
-        self._packet_start = 0
-        self._packet_end = 0
 
         if marc_state not in [addresses.MARCSTATE_IDLE, addresses.MARCSTATE_RX]:
             logger.error(f"Device must be in state IDLE(0x01) before receiving. Current state: 0x{marc_state:02X}")
@@ -388,79 +472,16 @@ class Cc1101:
         packet_format = self.configurator.get_packet_format()
 
         if packet_format == 0: # normal mode, use the RX FIFO
-            assert self.configurator.get_GDOx_config(0) == 0x06, "GDO0 must be configured for sync word detection (0x06) in fixed/variable length mode"
-            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for fixed/variable length mode"
-            # Start reception
-            self.driver.set_pin_mode(self.driver.gdo0, GPIO.IN)
-            if self.driver.wait_for_edge(self.driver.gdo0, GPIO.RISING, timeout=timeout_ms) is None:
-                logger.warning("Timeout waiting for start of reception")
-                return None
-            self._packet_start = time.time()
-            data = []
-            while (self.driver.wait_for_edge(self.driver.gdo0, GPIO.FALLING, timeout=self.driver.fifo_rw_interval) is None) and (self.driver.read_gdo0() == GPIO.HIGH):
-                self._packet_end = time.time()
-                trunc = self.driver.read_burst(addresses.RXFIFO, self._get_rx_bytes()-1)
-                if trunc is not None:
-                    data += trunc
-            trunc = self.driver.read_burst(addresses.RXFIFO, self._get_rx_bytes())
-            data += trunc
-            self.driver.reset_pin_mode(self.driver.gdo0)
-
-            length = None
-            rssi = None
-            lqi = None
-            crc_ok = False
-            
-            if self.configurator.get_packet_length_mode() == 0: # fixed length mode
-                length = len(data)
-            else: # variable length mode
-                length = data[0]
-                data = data[1:]
-
-            if self.configurator.get_append_status_enabled() and (self.configurator.get_packet_length_mode() in [0, 1]):
-                rssi = data[-2]
-                lqi = data[-1] & 0x7F
-                crc_ok = data[-1] & 0x80 == 0x80
-                data = data[:-2]
-                length -= 2
-
-
-            return NormalRxPacket(
-                payload=data, 
-                length=length, 
-                rssi=rssi, 
-                lqi=lqi, 
-                crc_ok=crc_ok, 
-                timestamp=self._packet_start)
+            packet = self._receive_packet_mode(timeout_ms)
             
         elif packet_format == 1: # synchronous serial mode
-            time.sleep(0.1)
-            bits = self.driver.synchronous_serial_read(
-                self.driver.gdo2,
-                self.driver.gdo0,
-                timeout_ms=timeout_ms
-            )
-            packet = SyncRxPacket(bits.bits, timestamp=time.time())
-        elif packet_format == 2: # random mode
-            packet = None
-        elif packet_format == 3: # asynchronous serial mode
-            assert self.configurator.get_GDOx_config(0) == 0x0E, "GDO0 must be configured for carrier sense (0x0E) in infinite length mode"
-            assert self.configurator.get_GDOx_config(2) == 0x0D, "GDO2 must be configured for serial data output (0x0D) in infinite length mode"
-            assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for infinite length mode"
-            assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for infinite length mode"
-            
-            edges = self.driver.asynchronous_serial_read(
-                self.driver.gdo0,
-                self.driver.gdo2,
-                timeout_ms=timeout_ms,
-            )
+            packet = self._receive_sync_serial_mode(timeout_ms)
 
-            #packet = Raw_Received_Packet(
-            #    edges=[(x[1], x[0] - raw.start_capture) for x in raw.transitions],
-            #    timestamp=raw.start_capture, 
-            #    length_s=raw.end_capture - raw.start_capture,
-            #    configurator=self.configurator)
-            packet = AsyncRxPacket(edges=[(x[1], x[0] - edges.start_capture) for x in edges.transitions], timestamp=time.time())
+        elif packet_format == 2: # random mode
+            raise NotImplementedError("Random mode is not supported")
+        
+        elif packet_format == 3: # asynchronous serial mode
+            packet = self._receive_async_serial_mode(timeout_ms)
 
         self.set_idle_mode()
         return packet
