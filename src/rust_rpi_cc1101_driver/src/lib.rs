@@ -176,7 +176,7 @@ fn asynchronous_serial_write(data_pin_number:u8, baudrate:u32, data:Vec<u8>) -> 
 }
 
 #[pyfunction]
-fn synchronous_serial_write(clock_pin_number: u8, data_pin_number:u8, data:Vec<u8>, baudrate: u32) -> PyResult<Option<()>> {
+fn synchronous_serial_write(clock_pin_number: u8, data_pin_number:u8, data:Vec<u8>) -> PyResult<Option<()>> {
     
     let mut data_pin = Gpio::new()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
@@ -230,16 +230,14 @@ fn synchronous_serial_read(clock_pin_number: u8, data_pin_number:u8, timeout_ms:
 
     let _ = wait_for_interrupt_non_py(&mut data_pin, Duration::from_millis(timeout_ms), Trigger::RisingEdge).ok_or_else(|| PyRuntimeError::new_err("Timeout waiting for rising edge"))?;
     
+    bits.push(1);
+
     let start_capture = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-
+    
     loop{
-        /*let clock_edge = wait_for_interrupt(clock_pin_number, timeout_ms, TRIGGER_FALLING_EDGE)?;
-        if clock_edge.is_none(){
-            return Ok(None); // Timeout
-        }*/
-        let _ = wait_for_interrupt_non_py(&mut clock_pin, Duration::from_millis(timeout_ms), Trigger::RisingEdge).ok_or_else(|| PyRuntimeError::new_err("Timeout waiting for falling edge"))?;
+        let _ = wait_for_interrupt_non_py(&mut clock_pin, Duration::from_micros(2000), Trigger::RisingEdge).ok_or_else(|| PyRuntimeError::new_err("Timeout waiting for falling edge"))?;
 
         let bit = data_pin.read();
         if bit == Level::High{

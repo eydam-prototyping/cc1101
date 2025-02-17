@@ -2,29 +2,29 @@ from epCC1101.configurator import Cc1101Configurator
 
 class Protocol:
     def __init__(self):
-        self.base_frequency = 433.92e6
-        self.data_rate = 1000
-        self.modulation_format = 0
+        self._base_frequency = 433.92e6
+        self._data_rate = 1000
+        self._modulation_format = 0
 
     @property
     def base_frequency(self) -> float:
         """Get or set the base frequency of the radio in Hz. The base frequency is the center frequency of the radio.
         """
-        return self.base_frequency
+        return self._base_frequency
     
     @base_frequency.setter
     def base_frequency(self, value: float):
-        self.base_frequency = value
+        self._base_frequency = value
 
     @property
     def data_rate(self) -> int:
         """Get or set the data rate of the radio in baud. The data rate is the rate at which bits are transmitted.
         """
-        return self.data_rate
+        return self._data_rate
 
     @data_rate.setter
     def data_rate(self, value: int):
-        self.data_rate = value
+        self._data_rate = value
     
     @property
     def modulation_format(self) -> int:
@@ -37,15 +37,14 @@ class Protocol:
             4: 4-FSK
             7: MSK
         """
-        return self.modulation_format
+        return self._modulation_format
     
     @modulation_format.setter
     def modulation_format(self, value: int):
-        assert self.modulation_format in [0, 1, 2, 3, 4], "Invalid modulation format."
-        self.modulation_format = value
+        self._modulation_format = value
 
     def setup_configurator(self, configurator: Cc1101Configurator):
-        configurator.set_base_frequency_hz(self.base_frequency)
+        configurator.set_base_frequency_hz(self._base_frequency)
         configurator.set_data_rate_baud(self.data_rate)
         configurator.set_modulation_format(self.modulation_format)
 
@@ -121,18 +120,76 @@ class Cc1101_Packet_Protocol(Protocol):
         configurator.set_address(self.receiver_address)
 
 
-class PT2262_Protocol(Protocol):
-    def __init__(self):
-        self.base_frequency = 433.92e6
-        self.data_rate = 2760
+class Princeton25bit_Protocol(Protocol):
+    """Protocol for decoding PT2262 packets.
+    """
+    high_pattern=[1, 1, 1, 0]
+    low_pattern=[1, 0, 0, 0]
+
+    def __init__(self, address_bits=12, data_bits=8):
+        self.address_bits = address_bits
+        self.data_bits = data_bits
+        self._base_frequency = 433.92e6
+        self.data_rate = 2780
         self.modulation_format = 3
 
     def setup_configurator(self, configurator: Cc1101Configurator):
         super().setup_configurator(configurator)
         configurator.set_packet_format(1)
-        configurator.set_base_frequency_hz(self.base_frequency)
+        configurator.set_base_frequency_hz(self._base_frequency)
         configurator.set_data_rate_baud(self.data_rate)
         configurator.set_modulation_format(self.modulation_format)
+
+    def _align_bits(self, physical_bits):
+        for i in range(len(physical_bits)):
+            if list(physical_bits[i:i+4]) in [self.high_pattern, self.low_pattern]:
+                return physical_bits[i:]
+        return []
+            
+    def _to_logical_bits(self, physical_bits):
+        logical_bits = []
+        for i in range(len(physical_bits)//4):
+            if list(physical_bits[i*4:i*4+4]) == self.high_pattern:
+                logical_bits.append(1)
+            elif list(physical_bits[i*4:i*4+4]) == self.low_pattern:
+                logical_bits.append(0)
+        return logical_bits
+
+    def _to_logical_bytes(self, logical_bits):
+        if len(logical_bits) != 25:
+            return None
+        
+        logical_bytes = []
+        
+        for i in range((len(logical_bits)-1)//8):
+            byte = 0
+            for j in range(8):
+                byte <<= 1
+                byte |= logical_bits[i*8+j]
+            logical_bytes.append(byte)
+        
+        return logical_bytes
+    
+    def _to_logical_values(self, logical_bytes):
+        logical_values = {}
+        x = 0
+        for byte in logical_bytes:
+            x <<= 8
+            x |= byte
+        
+        logical_values["address"] = x >> self.data_bits
+        logical_values["data"] = x & (2**self.data_bits-1)
+        return logical_values
+    
+    def parse(self, physical_bits):
+        self._physical_bits = physical_bits
+        self._physical_bits = self._align_bits(self._physical_bits)
+        self._logical_bits = self._to_logical_bits(self._physical_bits)
+        if len(self._logical_bits) != 25:
+            return None
+        self._logical_bytes = self._to_logical_bytes(self._logical_bits)
+        self._logical_values = self._to_logical_values(self._logical_bytes)
+        return self._logical_values
 
 
 class Packet:

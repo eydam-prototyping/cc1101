@@ -422,16 +422,17 @@ class Cc1101:
             timestamp=self._packet_start)
 
 
-    def _receive_sync_serial_mode(self, timeout_ms:int) -> SyncRxPacket:
+    def _receive_sync_serial_mode(self, timeout_ms:int, max_same_bits:int) -> SyncRxPacket:
         assert self.configurator.get_GDOx_config(0) == 0x0C, "GDO0 must be configured for sync serial data output (0x0C) in synchronous serial mode"
         assert self.configurator.get_GDOx_config(2) == 0x0B, "GDO2 must be configured for serial clock (0x0B) in synchronous serial mode"
         assert self.driver.gdo0 is not None, "GDO0 must be connected to an interrupt pin for synchronous serial mode"
         assert self.driver.gdo2 is not None, "GDO2 must be connected to an interrupt pin for synchronous serial mode"
-        time.sleep(0.01)
+        time.sleep(0.006)
         bits = self.driver.synchronous_serial_read(
             self.driver.gdo2,
             self.driver.gdo0,
-            timeout_ms=timeout_ms
+            timeout_ms=timeout_ms,
+            max_same_bits=max_same_bits,
         )
         return SyncRxPacket(bits.bits, timestamp=time.time())
 
@@ -451,7 +452,7 @@ class Cc1101:
         return AsyncRxPacket(edges=[(x[1], x[0] - edges.start_capture) for x in edges.transitions], timestamp=time.time())
 
 
-    def receive(self, timeout_ms=1000) -> RxPacket:
+    def receive(self, timeout_ms=1000, max_same_bits=16) -> RxPacket:
         """Receive data.
         
         Returns:
@@ -475,7 +476,7 @@ class Cc1101:
             packet = self._receive_packet_mode(timeout_ms)
             
         elif packet_format == 1: # synchronous serial mode
-            packet = self._receive_sync_serial_mode(timeout_ms)
+            packet = self._receive_sync_serial_mode(timeout_ms, max_same_bits)
 
         elif packet_format == 2: # random mode
             raise NotImplementedError("Random mode is not supported")
