@@ -40,5 +40,5 @@ INFO:__main__:Packet 16: 2
 INFO:__main__:Packet 17: 1
 INFO:__main__:Packet 18: 4
 INFO:__main__:Packet 19: 1
-INFO:__main__:========================================`
+INFO:__main__:========================================
 ```
