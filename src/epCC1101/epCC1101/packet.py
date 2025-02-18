@@ -191,20 +191,29 @@ class Princeton25bit_Protocol(Protocol):
         self._logical_values = self._to_logical_values(self._logical_bytes)
         return self._logical_values
 
+    def _get_physical_bits(self, logical_values):
+        physical_bits = []
+        x = (logical_values["address"] << self.data_bits) | logical_values["data"]
+        for i in range(24):
+            physical_bits = (self.high_pattern if (x & 1) else self.low_pattern) + physical_bits
+            x >>= 1
+        physical_bits += [1, 0, 0, 0, 0, 0, 0, 0]
+        return physical_bits
+
+    def get_physical_bytes(self, logical_values):
+        physical_bits = self._get_physical_bits(logical_values)
+        physical_bytes = []
+        for i in range(0, len(physical_bits), 8):
+            byte = 0
+            for j in range(8):
+                byte <<= 1
+                byte |= physical_bits[i+j]
+            physical_bytes.append(byte)
+        return physical_bytes
 
 class Packet:
     def __init__(self):
         self._payload = []
-
-    @property
-    def protocol(self) -> Protocol:
-        """Get or set the protocol of the packet.
-        """
-        return self._protocol
-    
-    @protocol.setter
-    def protocol(self, value: Protocol):
-        self._protocol = value
 
     @property
     def payload(self) -> list:

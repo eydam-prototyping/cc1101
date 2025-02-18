@@ -61,5 +61,5 @@ class Abstract_Driver:
         return []
     
     @abstractmethod
-    def synchronous_serial_write(self, clock_pin_number:int, data_pin_number:int, data, baudrate:int):
+    def synchronous_serial_write(self, clock_pin_number:int, data_pin_number:int, data):
         return []

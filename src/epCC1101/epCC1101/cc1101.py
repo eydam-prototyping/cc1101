@@ -334,7 +334,7 @@ class Cc1101:
             self.driver.reset_pin_mode(self.driver.gdo0)
 
     def _transmit_sync_serial_mode(self, packet:SyncTxPacket):
-        self.driver.synchronous_serial_write(self.driver.gdo2, self.driver.gdo0, [int(i) for i in packet.payload], self.configurator.get_data_rate_baud())
+        self.driver.synchronous_serial_write(self.driver.gdo2, self.driver.gdo0, [int(i) for i in packet.payload])
         
     def _transmit_async_serial_mode(self, packet:AsyncTxPacket):
         self.driver.asynchronous_serial_write(self.driver.gdo0, self.configurator.get_data_rate_baud(), [int(i) for i in packet.payload])
