@@ -1,11 +1,12 @@
 from epCC1101 import Cc1101, Driver, presets
+
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
 # Create a driver object
-driver = Driver(spi_bus=0, cs_pin=0, gdo0=23)
+driver = Driver(spi_bus=0, cs_pin=0, gdo0=5, gdo2=6)
 
 # Create a CC1101 object
 cc1101 = Cc1101(driver=driver)

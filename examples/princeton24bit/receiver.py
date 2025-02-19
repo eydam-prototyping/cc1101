@@ -16,8 +16,8 @@ cc1101.configurator.set_packet_format(1)        # Set packet format to be sync s
 cc1101.configurator.set_base_frequency_hz(433.94e6)
 cc1101.configurator.set_receiver_bandwidth_hz(101e3)
 cc1101.configurator.set_data_rate_baud(2780)
-cc1101.configurator.set_GDOx_config(0, 0x0B)    # Set GDO0 to be High when RSSI is above threshold
-cc1101.configurator.set_GDOx_config(2, 0x0C)    # Set GDO2 to output the received data
+#cc1101.configurator.set_GDOx_config(0, 0x0B)    # Set GDO0 to be High when RSSI is above threshold
+#cc1101.configurator.set_GDOx_config(2, 0x0C)    # Set GDO2 to output the received data
 cc1101.set_configuration()
 
 cc1101.configurator.print_description()

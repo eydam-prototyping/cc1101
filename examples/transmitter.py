@@ -1,11 +1,12 @@
-from epCC1101 import Cc1101, Driver, presets
+from epCC1101 import Cc1101, Driver, presets, NormalTxPacket
 import time
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Create a driver object
-driver = Driver(spi_bus=0, cs_pin=1, gdo0=24)
+#driver = Driver(spi_bus=0, cs_pin=1, gdo0=24)
+driver = Driver(spi_bus=0, cs_pin=1, gdo0=22, gdo2=23)
 
 # Create a CC1101 object
 cc1101 = Cc1101(driver=driver)
@@ -13,7 +14,7 @@ cc1101.reset()
 
 # Load a preset configuration
 cc1101.load_preset(presets.rf_setting_dr5k7_dev5k2_2fsk_rxbw58k)
-cc1101.configurator.set_preamble_length_bytes(2)
+
 # Change the preset as you like
 # Set the data rate to 5700 baud
 cc1101.configurator.set_data_rate_baud(5700)
@@ -39,5 +40,6 @@ cc1101.configurator.print_description()
 # Transmit some data
 for i in range(5):
     logger.info("Transmitting...")
-    cc1101.transmit(bytes([i for i in range(1, 100)]))
+    packet = NormalTxPacket(payload=[i for i in range(1, 10)])
+    cc1101.transmit(packet)
     time.sleep(1)
